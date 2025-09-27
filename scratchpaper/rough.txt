@@ -1,0 +1,20 @@
+   <View style={styles.setRow}>
+        {/* <Text style={styles.cardTitle}></Text> */}
+        <Pressable
+          hitSlop={8}
+          onPress={() => {
+            Alert.alert(name, "What do you like to do?", [
+              {
+                text: "Remove from workout",
+                style: "destructive",
+                onPress: () => onRemove?.(id),
+              },
+            
+              // { text: 'Rename', onPress: () => onRename?.(id) },
+              { text: "Cancel", style: "cancel" },
+            ]);
+          }}
+        >
+          <Text style={styles.cardTitle}>{name} ⋯</Text>
+        </Pressable>
+      </View>

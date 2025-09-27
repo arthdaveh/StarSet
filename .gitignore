@@ -1,0 +1,55 @@
+# ---------------------------------------------------
+# Node / Dependencies
+# ---------------------------------------------------
+node_modules/
+
+# ---------------------------------------------------
+# Expo / React Native
+# ---------------------------------------------------
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native build projects (regenerated with expo prebuild)
+android/
+ios/
+
+# ---------------------------------------------------
+# Environment / Secrets
+# ---------------------------------------------------
+.env
+.env*.local
+
+# ---------------------------------------------------
+# IDE / Editor settings
+# ---------------------------------------------------
+.vscode/
+.idea/
+
+# ---------------------------------------------------
+# macOS / Windows junk files
+# ---------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------
+# Other build/debug/cache
+# ---------------------------------------------------
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+*.pem
+
+# TypeScript
+*.tsbuildinfo
