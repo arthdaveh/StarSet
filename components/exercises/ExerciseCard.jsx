@@ -158,6 +158,14 @@ const ExerciseCard = ({
     })();
 
     const prevLen = sets.length;
+
+    const prevWasEmpty = prevLen === 0 && String(notes ?? "").trim() === "";
+    const nowIsEmpty = updatedSets.length === 0 && nextNotes === "";
+
+    if (prevWasEmpty && nowIsEmpty) {
+      return;
+    }
+
     // 2) update local UI state
     setSets(updatedSets);
     setNotes(nextNotes);

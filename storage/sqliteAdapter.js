@@ -134,9 +134,25 @@ class SqliteAdapter {
   }
 
   writeQueue = Promise.resolve();
+
   async saveSession(exerciseId, utcKey, { notes, sets }) {
     this.writeQueue = this.writeQueue.then(async () => {
       await this.db.withTransactionAsync(async () => {
+        const hasSets = Array.isArray(sets) && sets.length > 0;
+        const notesText = (notes ?? "").trim();
+
+        if (!hasSets && notesText === "") {
+          await this.db.runAsync(
+            `DELETE FROM sets WHERE exerciseId=? AND utcKey=?`,
+            [exerciseId, utcKey]
+          );
+          await this.db.runAsync(
+            `DELETE FROM sessions WHERE exerciseId=? AND utcKey=?`,
+            [exerciseId, utcKey]
+          );
+          return;
+        }
+
         await this.db.runAsync(
           `INSERT INTO sessions (utcKey, exerciseId, notes)
            VALUES (?, ?, ?)
