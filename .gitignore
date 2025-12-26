@@ -53,3 +53,11 @@ yarn-error.*
 
 # TypeScript
 *.tsbuildinfo
+
+# SQLite / local data
+*.db
+*.sqlite
+*.sqlite3
+*-journal
+*-wal
+*-shm
