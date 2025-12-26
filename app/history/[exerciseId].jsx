@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Calendar } from "react-native-calendars";
 import {
   summarizeSession,
@@ -12,7 +12,11 @@ import { LineChart } from "react-native-gifted-charts";
 import { Dimensions } from "react-native";
 
 export default function HistoryScreen() {
-  const { name, units, data } = useLocalSearchParams();
+  const router = useRouter();
+  const { name, units, data, workoutId, workoutName } = useLocalSearchParams();
+  const wid = Array.isArray(workoutId) ? workoutId[0] : workoutId;
+  const wname = Array.isArray(workoutName) ? workoutName[0] : workoutName;
+
   const unitsObj = useMemo(() => {
     try {
       const raw = Array.isArray(units) ? units[0] : units;
@@ -27,7 +31,7 @@ export default function HistoryScreen() {
     }
   }, [units]);
 
-  const USER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  //const USER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   function utcKeyToLocalYMD(iso) {
     //wrong function name but whatever
@@ -74,7 +78,7 @@ export default function HistoryScreen() {
     const [y, m, d] = ymd.split("-").map(Number);
     return new Date(y, m - 1, d, 12, 0, 0); // local tz, noon to avoid DST edges
   }
-  const [range, setRange] = useState("30d"); // "30d", "12w", "1y", "all"
+  const [range, setRange] = useState("all"); // "30d", "12w", "1y", "all"
 
   const baseSeries = useMemo(() => {
     const points = [];
@@ -441,13 +445,32 @@ export default function HistoryScreen() {
 
               const summary = summarizeSession(entry.sets, unitsObj);
               rows.push(
-                <View key={ymd} style={styles.row}>
+                <Pressable
+                  key={ymd}
+                  onPress={() => {
+                    console.log("pressed", { workoutId, workoutName, ymd });
+                    if (!workoutId) return;
+
+                    router.push({
+                      pathname: "/exercises/[workoutId]",
+                      params: {
+                        workoutId,
+                        name: workoutName || "",
+                        selectedDate: ymd,
+                      },
+                    });
+                  }}
+                  style={({ pressed }) => [
+                    styles.row,
+                    pressed && { opacity: 0.5 },
+                  ]}
+                >
                   <Text style={styles.rowDate}>{formatPrettyDate(ymd)}</Text>
                   <Text style={styles.rowSummary}>{summary || "—"}</Text>
                   {!!entry.notes && (
                     <Text style={styles.rowNotes}>{entry.notes}</Text>
                   )}
-                </View>
+                </Pressable>
               );
             }
 

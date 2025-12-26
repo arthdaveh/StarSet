@@ -18,6 +18,7 @@ import { storage } from "../../storage/sqliteAdapter";
 //yeah this is a nightmare
 export default function WorkoutScreen() {
   const { workoutId, name, selectedDate: sd } = useLocalSearchParams();
+  const workoutName = name;
 
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [draftExerciseName, setDraftExerciseName] = useState("");
@@ -113,7 +114,14 @@ export default function WorkoutScreen() {
     const data = JSON.stringify(sessionsByExercise[exerciseId] ?? {});
     router.push({
       pathname: "/history/[exerciseId]",
-      params: { exerciseId, name, units: JSON.stringify(units), data },
+      params: {
+        exerciseId,
+        name,
+        units: JSON.stringify(units),
+        data,
+        workoutId,
+        workoutName,
+      },
     });
   }
 
@@ -139,6 +147,12 @@ export default function WorkoutScreen() {
 
   const initial = typeof sd === "string" ? sd : formatLocalYYYYMMDD();
   const [selectedDate, setSelectedDate] = useState(initial);
+
+  useEffect(() => {
+    if (typeof sd === "string" && sd !== selectedDate) {
+      setSelectedDate(sd);
+    }
+  }, [sd]);
 
   function readSession(exerciseId) {
     const key = localYMDToUtcKey(selectedDate);
