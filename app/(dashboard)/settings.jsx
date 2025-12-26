@@ -64,7 +64,7 @@ const settings = () => {
 
       Alert.alert(
         "Import complete",
-        "Exercises & sessions merged. If you don’t see updates immediately, back out and re-enter the screen."
+        "Exercises & sessions merged. Workouts were excluded, you may need to re-create them and add exercises manually. If you don’t see updates immediately, back out and re-enter the screen. "
       );
 
       // await refresh();

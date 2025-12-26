@@ -45,6 +45,19 @@ const Home = () => {
 
   const [selectedDate, setSelectedDate] = useState(formatLocalYYYYMMDD());
 
+  //update the date every x hours in case the app stays open past midnight
+  useEffect(() => {
+    const checkDate = () => {
+      const todayStr = formatLocalYYYYMMDD(new Date());
+      if (selectedDate !== todayStr) {
+        setSelectedDate(todayStr);
+      }
+    };
+
+    const id = setInterval(checkDate, 4 * 60 * 60 * 1000); // check once every x hours
+    return () => clearInterval(id);
+  }, [selectedDate]);
+
   const normalizeName = (s) => s.trim().toLowerCase().replace(/\s+/g, " ");
 
   const router = useRouter();
