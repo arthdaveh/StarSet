@@ -78,7 +78,7 @@ export default function HistoryScreen() {
     const [y, m, d] = ymd.split("-").map(Number);
     return new Date(y, m - 1, d, 12, 0, 0); // local tz, noon to avoid DST edges
   }
-  const [range, setRange] = useState("all"); // "30d", "12w", "1y", "all"
+  const [range, setRange] = useState("12w"); // "30d", "12w", "1y", "all"
 
   const baseSeries = useMemo(() => {
     const points = [];
