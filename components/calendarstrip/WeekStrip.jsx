@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 import WeekPills from "./WeekPills";
-import WeekPager from "./WeekPager";
 import WeekSwiper from "./WeekSwiper";
 
 const SCREEN_W = Dimensions.get("window").width;
