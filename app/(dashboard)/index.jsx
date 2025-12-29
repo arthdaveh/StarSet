@@ -184,7 +184,7 @@ export default Home;
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#000", // dark, spacey base
+    backgroundColor: "#000", // #000 dark, spacey base
     paddingHorizontal: 12,
     //paddingTop: 24, // room for the header (safe-ish)
   },
@@ -212,3 +212,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+// *_-

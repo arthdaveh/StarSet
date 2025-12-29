@@ -1,6 +1,9 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
 
 export default function WeekPills({ selectedDate, onChange, anchorDateYMD }) {
+  const todayStr = formatLocalYYYYMMDD(new Date());
+  const isTodaySelected = selectedDate === todayStr;
+
   function formatLocalYYYYMMDD(d) {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -69,24 +72,31 @@ export default function WeekPills({ selectedDate, onChange, anchorDateYMD }) {
         <Text style={styles.date}>{headerText}</Text>
       </Pressable>
 
-      <View style={styles.weekRow}>
-        {weekDays.map((d) => (
-          <Pressable
-            key={d.key}
-            style={[
-              styles.pill,
-              d.isToday && styles.pillToday,
-              d.isSelected && styles.pillSelected,
-            ]}
-            onPress={() => {
-              const todayStr = formatLocalYYYYMMDD(new Date());
-              onChange?.(d.dateStr === selectedDate ? todayStr : d.dateStr); //double tap logic #_o
-            }}
-          >
-            <Text style={styles.pillDay}>{d.day}</Text>
-            <Text style={styles.pillDate}>{d.date}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.weekRowWrapper}>
+        {!isTodaySelected && (
+          <View pointerEvents="none" style={styles.weekRowOutlineOverlay} />
+        )}
+
+        <View style={styles.weekRow}>
+          {weekDays.map((d) => (
+            <View key={d.key} style={styles.pillSlot}>
+              <Pressable
+                style={[
+                  styles.pill,
+                  d.isToday && styles.pillToday,
+                  d.isSelected && styles.pillSelected,
+                ]}
+                onPress={() => {
+                  const todayStr = formatLocalYYYYMMDD(new Date());
+                  onChange?.(d.dateStr === selectedDate ? todayStr : d.dateStr);
+                }}
+              >
+                <Text style={styles.pillDay}>{d.day}</Text>
+                <Text style={styles.pillDate}>{d.date}</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -96,15 +106,39 @@ const PILL_H = 50;
 const PILL_W = 42;
 const PILL_RADIUS = PILL_H / 2;
 
+const PILL_GAP = 10;
+const ROW_W = 7 * PILL_W + 6 * PILL_GAP;
+
 const styles = StyleSheet.create({
   header: { gap: 6, marginBottom: 16, alignItems: "center", marginTop: 12 },
   date: { color: "white", fontSize: 20, fontWeight: "600" },
 
   weekRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    columnGap: 10,
-    marginBottom: 8,
+
+    //marginBottom: 8,
+    //justifyContent: "space-between",
+    //marginHorizontal: 10,
+    //alignSelf: "center",
+  },
+
+  weekRowWrapper: {
+    position: "relative",
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 28,
+  },
+
+  weekRowOutlineOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "#666",
+  },
+
+  pillSlot: {
+    flex: 1,
+    alignItems: "center",
   },
 
   pill: {

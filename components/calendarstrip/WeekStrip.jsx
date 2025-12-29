@@ -1,6 +1,17 @@
 import React, { useState, useMemo } from "react";
-import { View, Pressable, Text, StyleSheet } from "react-native";
+import {
+  View,
+  Pressable,
+  Text,
+  StyleSheet,
+  Dimensions,
+  useWindowDimensions,
+} from "react-native";
 import WeekPills from "./WeekPills";
+import WeekPager from "./WeekPager";
+import WeekSwiper from "./WeekSwiper";
+
+const SCREEN_W = Dimensions.get("window").width;
 
 // utils nwidfrwdjle fvjwervow my head hurts
 function parseLocalYMD(ymd) {
@@ -30,6 +41,9 @@ function startOfWeekMonday(d) {
 }
 
 export default function WeekStrip({ selectedDate, onChange }) {
+  const { width } = useWindowDimensions();
+  const pageW = width - 24;
+
   const [anchorDateYMD, setAnchorDateYMD] = useState(() => {
     const sel = parseLocalYMD(selectedDate) ?? new Date();
     return formatYMD(startOfWeekMonday(sel));
@@ -54,13 +68,22 @@ export default function WeekStrip({ selectedDate, onChange }) {
   };
 
   return (
-    <View>
-      <WeekPills
+    // <View style={{ width: pageW, alignSelf: "center" }}>
+    <View style={{ marginHorizontal: -12 }}>
+      <WeekSwiper
         selectedDate={selectedDate}
         onChange={handleChange}
-        anchorDateYMD={anchorDateYMD}
+        pageWidth={pageW}
       />
-      <View style={styles.controls}>
+      {/* <WeekPager selectedDate={selectedDate} onChange={handleChange} /> */}
+      {/* <WeekPills 
+        selectedDate={selectedDate}
+        onChange={handleChange}
+        anchorDateYMD={selectedDate}
+      />
+      */}
+
+      {/* <View style={styles.controls}> 
         <Pressable style={styles.btn} onPress={goPrevWeek}>
           <Text style={styles.btnText}>‹ Prev</Text>
         </Pressable>
@@ -68,7 +91,9 @@ export default function WeekStrip({ selectedDate, onChange }) {
         <Pressable style={styles.btn} onPress={goNextWeek}>
           <Text style={styles.btnText}>Next ›</Text>
         </Pressable>
+        
       </View>
+      */}
     </View>
   );
 }

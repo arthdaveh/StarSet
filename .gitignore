@@ -11,6 +11,8 @@ dist/
 web-build/
 expo-env.d.ts
 
+ignoreArchive/
+
 # Native build projects (regenerated with expo prebuild)
 android/
 ios/
