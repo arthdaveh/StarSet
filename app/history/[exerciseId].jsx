@@ -448,7 +448,7 @@ export default function HistoryScreen() {
                 <Pressable
                   key={ymd}
                   onPress={() => {
-                    console.log("pressed", { workoutId, workoutName, ymd });
+                    //console.log("pressed", { workoutId, workoutName, ymd });
                     if (!workoutId) return;
 
                     router.push({

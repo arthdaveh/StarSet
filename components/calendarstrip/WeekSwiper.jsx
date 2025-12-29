@@ -1,4 +1,10 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  useLayoutEffect,
+} from "react";
 import { View, Dimensions } from "react-native";
 import Swiper from "react-native-swiper";
 import WeekPills from "./WeekPills";
@@ -36,6 +42,7 @@ function addDays(ymd, deltaDays) {
 export default function WeekSwiper({ selectedDate, onChange, pageWidth }) {
   const swiperRef = useRef(null);
   const snappingRef = useRef(false);
+  const pendingRecenterRef = useRef(false);
 
   const initialMonday = useMemo(() => {
     const d = parseYMD(selectedDate);
@@ -44,15 +51,14 @@ export default function WeekSwiper({ selectedDate, onChange, pageWidth }) {
 
   const [anchorMondayYMD, setAnchorMondayYMD] = useState(initialMonday);
 
-  //if selectedDate changes jumps back to today, and week is different, then update anchor and jump back to this week.
   useEffect(() => {
     const d = parseYMD(selectedDate);
     if (!d) return;
     const monday = fmtYMD(mondayOf(d));
     if (monday !== anchorMondayYMD) {
+      snappingRef.current = true;
+      pendingRecenterRef.current = true;
       setAnchorMondayYMD(monday);
-      // recenter safely
-      setTimeout(() => swiperRef.current?.scrollTo?.(1, false), 0);
     }
   }, [selectedDate]);
 
@@ -62,17 +68,21 @@ export default function WeekSwiper({ selectedDate, onChange, pageWidth }) {
     if (snappingRef.current) return;
     if (ind === 1) return;
 
-    const dir = ind - 1; // 0->-1, 2->+1
+    const dir = ind - 1;
     snappingRef.current = true;
+    pendingRecenterRef.current = true;
 
     setAnchorMondayYMD((prev) => addDays(prev, dir * 7));
-
-    // snap back to middle after state update starts
-    setTimeout(() => {
-      swiperRef.current?.scrollTo?.(1, false);
-      snappingRef.current = false;
-    }, 10);
   };
+
+  useLayoutEffect(() => {
+    if (!pendingRecenterRef.current) return;
+
+    swiperRef.current?.scrollTo?.(1, false);
+
+    pendingRecenterRef.current = false;
+    snappingRef.current = false;
+  }, [anchorMondayYMD]);
 
   return (
     <View style={{ height: 120, width: SCREEN_W }}>
