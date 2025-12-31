@@ -16,6 +16,8 @@ export const WorkoutCard = ({
   onRemove,
   onRename,
   onMove,
+  onReorder,
+  selectedForReorder,
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState(name);
@@ -23,12 +25,27 @@ export const WorkoutCard = ({
   const openMenu = () => {
     if (Platform.OS === "ios" && Alert.prompt) {
       Alert.alert(name, "What do you want to do?", [
-        { text: "Move up", onPress: () => onMove?.(id, "up") },
+        /* { text: "Move up", onPress: () => onMove?.(id, "up") },
         { text: "Move down", onPress: () => onMove?.(id, "down") },
+        */
+        { text: "Reorder", onPress: () => onReorder?.(id) },
         {
           text: "Remove",
           style: "destructive",
-          onPress: () => onRemove?.(id),
+          onPress: () => {
+            Alert.alert(
+              "Delete workout?",
+              "This will remove the workout (but will retain the exercises)",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => onRemove?.(id),
+                },
+              ]
+            );
+          },
         },
         {
           text: "Rename",
@@ -68,7 +85,11 @@ export const WorkoutCard = ({
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.baseCard, pressed && styles.pressedCard]}
+      style={({ pressed }) => [
+        styles.baseCard,
+        pressed && styles.pressedCard,
+        selectedForReorder && { borderColor: "white" },
+      ]}
       onPress={() => onPress?.(id, name)}
       onLongPress={openMenu}
       delayLongPress={300}

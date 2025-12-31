@@ -130,7 +130,20 @@ export default function HistoryScreen() {
   }, [baseSeries]);
 
   //12WEEK-12WEEK-12WEEK-12WEEK-12WEEK-12WEEK-12WEEK-12WEEK
-  function startOfWeek(d) {
+
+  const ymdLocal = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+
+  const series12w = useMemo(() => {
+    const cutoff = daysAgoDate(90);
+    return baseSeries.filter((p) => p.date >= cutoff);
+  }, [baseSeries]);
+
+  /*
+    -- Top Weekly Max approach --
+    function startOfWeek(d) {
     const x = new Date(d);
     x.setHours(12, 0, 0, 0); // stable noon
     const day = x.getDay(); // 0=Sun..6=Sat
@@ -139,10 +152,7 @@ export default function HistoryScreen() {
     x.setHours(12, 0, 0, 0);
     return x;
   }
-  const ymdLocal = (d) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
+
 
   const series12w = useMemo(() => {
     const byWeek = new Map(); // key: YMD, val: { date, max }
@@ -168,6 +178,8 @@ export default function HistoryScreen() {
     // keep last 12 weeks
     return weekly.slice(-12);
   }, [baseSeries]);
+
+  */
 
   //1YEAR-1YEAR-1YEAR-1YEAR-1YEAR-1YEAR-1YEAR-1YEAR-1YEAR-1YEAR
   function startOfMonth(d) {

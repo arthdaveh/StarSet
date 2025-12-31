@@ -9,6 +9,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Home = () => {
+  // Reordering states
+  const [isReordering, setIsReordering] = useState(false);
+  const [selectedReorderWorkoutId, setSelectedReorderWorkoutId] =
+    useState(null);
+
   const [isAddingWorkout, setIsAddingWorkout] = useState(false);
   const [draftWorkoutName, setDraftWorkoutName] = useState("");
   const [workouts, setWorkouts] = useState([]);
@@ -68,6 +73,14 @@ const Home = () => {
     });
   };
 
+  const handlePressWorkout = (workoutId, name, selectedDate) => {
+    if (isReordering) {
+      setSelectedReorderWorkoutId(workoutId);
+      return;
+    }
+    openWorkout(workoutId, name, selectedDate);
+  };
+
   async function handleSaveWorkout() {
     const nameRaw = draftWorkoutName;
     const name = normalizeName(nameRaw);
@@ -116,6 +129,16 @@ const Home = () => {
     } catch (e) {
       console.warn("renameWorkout failed:", e);
     }
+  }
+
+  function startReorderMode(workoutId) {
+    setIsReordering(true);
+    setSelectedReorderWorkoutId(workoutId);
+  }
+
+  function endReorderMode() {
+    setIsReordering(false);
+    setSelectedReorderWorkoutId(null);
   }
 
   function moveWorkout(workoutId, direction) {
@@ -170,11 +193,52 @@ const Home = () => {
       {/* Workout List */}
       <WorkoutList
         workouts={workouts}
-        onPress={(id, name) => openWorkout(id, name, selectedDate)}
+        onPress={(id, name) => handlePressWorkout(id, name, selectedDate)}
         onRemove={removeWorkout}
         onRename={renameWorkout}
         onMove={moveWorkout}
+        onReorder={startReorderMode}
+        isReordering={isReordering}
+        selectedReorderWorkoutId={selectedReorderWorkoutId}
       />
+
+      {isReordering && (
+        <View style={styles.reorderBar}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.reorderBtn,
+              pressed && styles.reorderBtnPressed,
+            ]}
+            onPress={() => {
+              moveWorkout(selectedReorderWorkoutId, "down");
+            }}
+          >
+            <Text style={styles.reorderBtnText}>-</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={endReorderMode}
+            style={({ pressed }) => [
+              styles.reorderDoneBtn,
+              pressed && styles.reorderBtnPressed,
+            ]}
+          >
+            <Text style={styles.reorderDoneText}>Done</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.reorderBtn,
+              pressed && styles.reorderBtnPressed,
+            ]}
+            onPress={() => {
+              moveWorkout(selectedReorderWorkoutId, "up");
+            }}
+          >
+            <Text style={styles.reorderBtnText}>+</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 };
@@ -184,7 +248,7 @@ export default Home;
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#000", // #000 dark, spacey base
+    backgroundColor: "black", // #000 dark, spacey base
     paddingHorizontal: 12,
     //paddingTop: 24, // room for the header (safe-ish)
   },
@@ -210,6 +274,54 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "600",
+  },
+
+  reorderBar: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 61,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.92)",
+  },
+
+  reorderBtn: {
+    width: 56,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.10)",
+  },
+
+  reorderBtnText: {
+    fontSize: 22,
+    color: "white",
+  },
+
+  reorderDoneBtn: {
+    flex: 1,
+    marginHorizontal: 12,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+
+  reorderDoneText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  reorderBtnPressed: {
+    backgroundColor: "rgba(0,0,0,0.35)",
+    transform: [{ scale: 0.98 }],
   },
 });
 
