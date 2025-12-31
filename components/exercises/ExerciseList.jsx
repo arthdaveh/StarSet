@@ -16,31 +16,43 @@ const ExerciseList = ({
   onReadPrevSession,
   onOpenHistory,
   utils,
+  onReorder,
+  isReordering,
+  selectedReorderExId,
+  onSelectForReorder,
 }) => {
   return (
     <FlatList
       data={exercises} //
       keyExtractor={(id) => id}
-      renderItem={({ item: id }) => (
-        <ExerciseCard
-          id={id}
-          name={exercisesById[id]?.name || "Exercise"}
-          onRemove={onRemove}
-          onReadSession={onReadSession}
-          onPersistSession={onPersistSession}
-          selectedDate={selectedDate}
-          onRename={onRename}
-          onMove={onMove}
-          unit={exercisesById[id]?.unit}
-          onChangeUnits={onChangeUnits}
-          onReadPrevSession={onReadPrevSession}
-          onOpenHistory={onOpenHistory}
-          display={exercisesById[id]?.display}
-          unitOptions={EXERCISE_TYPES[exercisesById[id]?.type]?.unitOptions}
-          utils={utils}
-          type={exercisesById[id]?.type}
-        />
-      )}
+      renderItem={({ item: id }) => {
+        const isSelected = isReordering && id === selectedReorderExId;
+
+        return (
+          <ExerciseCard
+            id={id}
+            name={exercisesById[id]?.name || "Exercise"}
+            onRemove={onRemove}
+            onReadSession={onReadSession}
+            onPersistSession={onPersistSession}
+            selectedDate={selectedDate}
+            onRename={onRename}
+            onMove={onMove}
+            onReorder={onReorder}
+            isReordering={isReordering}
+            selectedForReorder={isSelected}
+            onSelectForReorder={onSelectForReorder}
+            unit={exercisesById[id]?.unit}
+            onChangeUnits={onChangeUnits}
+            onReadPrevSession={onReadPrevSession}
+            onOpenHistory={onOpenHistory}
+            display={exercisesById[id]?.display}
+            unitOptions={EXERCISE_TYPES[exercisesById[id]?.type]?.unitOptions}
+            utils={utils}
+            type={exercisesById[id]?.type}
+          />
+        );
+      }}
       contentContainerStyle={styles.list}
       showsVerticalScrollIndicator={false}
       keyboardDismissMode="on-drag"

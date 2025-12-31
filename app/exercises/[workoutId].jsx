@@ -17,6 +17,9 @@ import { storage } from "../../storage/sqliteAdapter";
 
 //yeah this is a nightmare
 export default function WorkoutScreen() {
+  const [isReordering, setIsReordering] = useState(false);
+  const [selectedReorderExId, setSelectedReorderExId] = useState(null);
+
   const { workoutId, name, selectedDate: sd } = useLocalSearchParams();
   const workoutName = name;
 
@@ -335,6 +338,16 @@ export default function WorkoutScreen() {
     }
   }
 
+  function startReorderMode(exId) {
+    setIsReordering(true);
+    setSelectedReorderExId(exId);
+  }
+
+  function endReorderMode() {
+    setIsReordering(false);
+    setSelectedReorderExId(null);
+  }
+
   function moveExercise(exerciseId, direction) {
     setExercises((prev) => {
       const idx = prev.findIndex((eid) => eid === exerciseId);
@@ -417,11 +430,53 @@ export default function WorkoutScreen() {
         selectedDate={selectedDate}
         onRename={renameExercise}
         onMove={moveExercise}
+        onReorder={startReorderMode}
+        isReordering={isReordering}
+        selectedReorderExId={selectedReorderExId}
+        onSelectForReorder={setSelectedReorderExId}
         onChangeUnits={setExerciseUnits}
         onReadPrevSession={readPrevSession}
         onOpenHistory={openHistory}
         utils={{ formatNum, convertWeight, summarizeSession, formatPrettyDate }}
       />
+
+      {isReordering && (
+        <View style={styles.reorderBar}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.reorderBtn,
+              pressed && styles.reorderBtnPressed,
+            ]}
+            onPress={() => {
+              moveExercise(selectedReorderExId, "down");
+            }}
+          >
+            <Text style={styles.reorderBtnText}>-</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={endReorderMode}
+            style={({ pressed }) => [
+              styles.reorderDoneBtn,
+              pressed && styles.reorderBtnPressed,
+            ]}
+          >
+            <Text style={styles.reorderDoneText}>Done</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.reorderBtn,
+              pressed && styles.reorderBtnPressed,
+            ]}
+            onPress={() => {
+              moveExercise(selectedReorderExId, "up");
+            }}
+          >
+            <Text style={styles.reorderBtnText}>+</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -455,5 +510,54 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "600",
+  },
+
+  // -- Reorder Bar --
+  reorderBar: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 61,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.92)",
+  },
+
+  reorderBtn: {
+    width: 56,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.10)",
+  },
+
+  reorderBtnText: {
+    fontSize: 22,
+    color: "white",
+  },
+
+  reorderDoneBtn: {
+    flex: 1,
+    marginHorizontal: 12,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+
+  reorderDoneText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  reorderBtnPressed: {
+    backgroundColor: "rgba(0,0,0,0.35)",
+    transform: [{ scale: 0.98 }],
   },
 });
