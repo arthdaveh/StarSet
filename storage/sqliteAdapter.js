@@ -691,17 +691,13 @@ class SqliteAdapter {
     }
 
     for (const e of exercises) {
-      let localId = localIdByNameKey[e.nameKey];
-
-      if (!localId) {
-        localId = await this.ensureExercise(
-          e.importExerciseId || newId(),
-          e.name,
-          e.type,
-          { quantityUnit: e.quantityUnit, countUnit: e.countUnit }
-        );
-        localIdByNameKey[e.nameKey] = localId;
-      }
+      const localId = await this.ensureExercise(
+        e.importExerciseId || newId(),
+        e.name,
+        e.type,
+        { quantityUnit: e.quantityUnit, countUnit: e.countUnit }
+      );
+      localIdByNameKey[e.nameKey] = localId;
     }
 
     const importIdToNameKey = {};
