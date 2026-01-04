@@ -7,6 +7,7 @@ import WeekStrip from "../../components/calendarstrip/WeekStrip";
 import { storage } from "../../storage/sqliteAdapter";
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { newId } from "../../storage/id";
 
 const Home = () => {
   // Reordering states
@@ -89,7 +90,7 @@ const Home = () => {
     const exists = workouts.some((w) => normalizeName(w.name) === name);
     if (exists) return;
 
-    const newWorkout = { id: Date.now().toString(), name: nameRaw.trim() };
+    const newWorkout = { id: newId(), name: nameRaw.trim() };
     setWorkouts((prev) => [...prev, newWorkout]);
     setDraftWorkoutName("");
     setIsAddingWorkout(false);

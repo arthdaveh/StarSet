@@ -1,7 +1,12 @@
 // storage/sqliteAdapter.js
+
+// yeahhh idk i made it work somehow hopefully never have to come back here again lolollllol blehhhhh
+
 import * as SQLite from "expo-sqlite";
+import { newId } from "./id";
 
 const normalizeName = (s) => s.trim().toLowerCase().replace(/\s+/g, " ");
+const nowMs = () => Date.now();
 
 class SqliteAdapter {
   db = null;
@@ -9,7 +14,7 @@ class SqliteAdapter {
 
   async init() {
     if (this.ready) return;
-    this.db = await SQLite.openDatabaseAsync("starset_v11.db");
+    this.db = await SQLite.openDatabaseAsync("starset_v12.db");
     await this.db.execAsync("PRAGMA foreign_keys = ON;");
 
     //SQL TABLES--SQL TABLES--SQL TABLES--SQL TABLES--SQL TABLES--SQL TABLES--SQL TABLES-
@@ -33,7 +38,11 @@ class SqliteAdapter {
       CREATE TABLE IF NOT EXISTS workouts (
         workoutId   TEXT PRIMARY KEY,
         name        TEXT NOT NULL,
-        position    INTEGER  
+        position    INTEGER,  
+
+        updatedAt INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER) * 1000),
+        deletedAt INTEGER,
+        dirty     INTEGER NOT NULL DEFAULT 1
       );
 
       CREATE TABLE IF NOT EXISTS exercises (
@@ -41,7 +50,11 @@ class SqliteAdapter {
         name          TEXT NOT NULL,
         type          TEXT NOT NULL,     -- "weight_reps" | "reps_only" | ...
         quantityUnit  TEXT DEFAULT '',   -- e.g. "lbs" | "kg" | "" 
-        countUnit     TEXT DEFAULT ''    -- e.g. "ct" | "sec" | "min" | ""
+        countUnit     TEXT DEFAULT '',    -- e.g. "ct" | "sec" | "min" | ""
+
+        updatedAt INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER) * 1000),
+        deletedAt INTEGER,
+        dirty     INTEGER NOT NULL DEFAULT 1
       );
 
 
@@ -49,7 +62,12 @@ class SqliteAdapter {
       CREATE TABLE IF NOT EXISTS workout_exercises (
         workoutId  TEXT NOT NULL,
         exerciseId TEXT NOT NULL,
-        position   INTEGER,              -- for ordering within the workout
+        position   INTEGER,      
+
+        updatedAt INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER) * 1000),
+        deletedAt INTEGER,
+        dirty     INTEGER NOT NULL DEFAULT 1,
+
         PRIMARY KEY (workoutId, exerciseId),
         FOREIGN KEY (workoutId)  REFERENCES workouts(workoutId)  ON DELETE CASCADE,
         FOREIGN KEY (exerciseId) REFERENCES exercises(exerciseId) ON DELETE CASCADE
@@ -65,6 +83,11 @@ class SqliteAdapter {
         exerciseId TEXT NOT NULL,
         utcKey     TEXT NOT NULL,
         notes      TEXT DEFAULT '',
+
+        updatedAt INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER) * 1000),
+        deletedAt INTEGER,
+        dirty     INTEGER NOT NULL DEFAULT 1,
+
         PRIMARY KEY (exerciseId, utcKey),
         FOREIGN KEY (exerciseId) REFERENCES exercises(exerciseId) ON DELETE CASCADE
       );
@@ -78,7 +101,12 @@ class SqliteAdapter {
         quantityUnitUsed TEXT,           -- unit at entry time (e.g., "lbs")
         count            REAL,           -- reps / seconds / etc (secondary)
         countUnitUsed    TEXT,
-        orderIndex       INTEGER,        -- stable row order within the session
+        orderIndex       INTEGER,       
+
+        updatedAt INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER) * 1000),
+        deletedAt INTEGER,
+        dirty     INTEGER NOT NULL DEFAULT 1,
+
         FOREIGN KEY (exerciseId) REFERENCES exercises(exerciseId) ON DELETE CASCADE,
         FOREIGN KEY (exerciseId, utcKey) REFERENCES sessions(exerciseId, utcKey) ON DELETE CASCADE
       );
@@ -94,6 +122,7 @@ class SqliteAdapter {
       );
     }
     this.ready = true;
+    this.purgeDeleted().catch(() => {});
   }
 
   //SESSIONS CRUD-SESSIONS CRUD-SESSIONS CRUD-SESSIONS CRUD-SESSIONS CRUD-
@@ -103,15 +132,16 @@ class SqliteAdapter {
     const sess = await this.db.getAllAsync(
       `SELECT utcKey, notes
          FROM sessions
-        WHERE exerciseId=?`,
+        WHERE exerciseId=?
+          AND deletedAt IS NULL`,
       [exerciseId]
     );
 
-    // sets (ordered)
     const sets = await this.db.getAllAsync(
       `SELECT utcKey, setId, quantity, quantityUnitUsed, count, countUnitUsed, orderIndex
          FROM sets
         WHERE exerciseId=?
+          AND deletedAt IS NULL
         ORDER BY utcKey ASC, orderIndex ASC`,
       [exerciseId]
     );
@@ -139,38 +169,79 @@ class SqliteAdapter {
     this.writeQueue = this.writeQueue.then(async () => {
       await this.db.withTransactionAsync(async () => {
         const hasSets = Array.isArray(sets) && sets.length > 0;
-        const notesText = (notes ?? "").trim();
+        const notesText = String(notes ?? "").trim();
+        const t = nowMs();
 
         if (!hasSets && notesText === "") {
           await this.db.runAsync(
-            `DELETE FROM sets WHERE exerciseId=? AND utcKey=?`,
-            [exerciseId, utcKey]
+            `UPDATE sets
+                SET deletedAt=?,
+                    updatedAt=?,
+                    dirty=1
+              WHERE exerciseId=? AND utcKey=?
+                AND deletedAt IS NULL`,
+            [t, t, exerciseId, utcKey]
           );
+
           await this.db.runAsync(
-            `DELETE FROM sessions WHERE exerciseId=? AND utcKey=?`,
-            [exerciseId, utcKey]
+            `UPDATE sessions
+                SET deletedAt=?,
+                    updatedAt=?,
+                    dirty=1
+              WHERE exerciseId=? AND utcKey=?
+                AND deletedAt IS NULL`,
+            [t, t, exerciseId, utcKey]
           );
+
           return;
         }
 
         await this.db.runAsync(
-          `INSERT INTO sessions (utcKey, exerciseId, notes)
-           VALUES (?, ?, ?)
-           ON CONFLICT(exerciseId, utcKey) DO UPDATE SET notes=excluded.notes`,
-          [utcKey, exerciseId, notes ?? ""]
+          `INSERT INTO sessions (utcKey, exerciseId, notes, updatedAt, deletedAt, dirty)
+           VALUES (?, ?, ?, ?, NULL, 1)
+           ON CONFLICT(exerciseId, utcKey) DO UPDATE SET
+             notes=excluded.notes,
+             updatedAt=excluded.updatedAt,
+             deletedAt=NULL,
+             dirty=1`,
+          [utcKey, exerciseId, String(notes ?? ""), t]
         );
 
         await this.db.runAsync(
-          `DELETE FROM sets WHERE exerciseId=? AND utcKey=?`,
-          [exerciseId, utcKey]
+          `UPDATE sets
+              SET deletedAt=?,
+                  updatedAt=?,
+                  dirty=1
+            WHERE exerciseId=? AND utcKey=?
+              AND deletedAt IS NULL`,
+          [t, t, exerciseId, utcKey]
         );
 
         let idx = 0;
         for (const s of sets ?? []) {
           await this.db.runAsync(
             `INSERT INTO sets
-               (setId, exerciseId, utcKey, quantity, quantityUnitUsed, count, countUnitUsed, orderIndex)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+               (setId, exerciseId, utcKey,
+                quantity, quantityUnitUsed,
+                count, countUnitUsed,
+                orderIndex,
+                updatedAt, deletedAt, dirty)
+             VALUES (?, ?, ?,
+                     ?, ?,
+                     ?, ?,
+                     ?,
+                     ?, NULL, 1)
+             ON CONFLICT(setId) DO UPDATE SET
+               exerciseId=excluded.exerciseId,
+               utcKey=excluded.utcKey,
+               quantity=excluded.quantity,
+               quantityUnitUsed=excluded.quantityUnitUsed,
+               count=excluded.count,
+               countUnitUsed=excluded.countUnitUsed,
+               orderIndex=excluded.orderIndex,
+               updatedAt=excluded.updatedAt,
+               deletedAt=NULL,
+               dirty=1`,
             [
               s.id,
               exerciseId,
@@ -180,113 +251,190 @@ class SqliteAdapter {
               s.count ?? null,
               s.countUnitUsed ?? null,
               idx++,
+              t,
             ]
           );
         }
       });
     });
-    return this.writeQueue; // so callers can still await if they want
+
+    return this.writeQueue;
   }
 
   //WORKOUTS CRUD-WORKOUTS CRUD-WORKOUTS CRUD-WORKOUTS CRUD-WORKOUTS CRUD-
   async createWorkout(workoutId, name) {
     const max = await this.db.getFirstAsync(
-      `SELECT COALESCE(MAX(position),0) AS m FROM workouts`
+      `SELECT COALESCE(MAX(position),0) AS m FROM workouts WHERE deletedAt IS NULL`
     );
     const nextPos = (max?.m ?? 0) + 1;
 
+    const t = nowMs();
+
     await this.db.runAsync(
-      `INSERT INTO workouts (workoutId, name, position) VALUES (?, ?, ?)`,
-      [String(workoutId), String(name ?? "").trim(), nextPos]
+      `INSERT INTO workouts (workoutId, name, position, updatedAt, dirty, deletedAt)
+       VALUES (?, ?, ?, ?, 1, NULL)`,
+      [String(workoutId), String(name ?? "").trim(), nextPos, t]
     );
+
     return { workoutId, name: String(name ?? "").trim(), position: nextPos };
   }
 
   async getAllWorkouts() {
     if (!this.ready) throw new Error("DB not ready – call init() first");
     return await this.db.getAllAsync(
-      `SELECT workoutId, name FROM workouts ORDER BY position ASC`
+      `SELECT workoutId, name
+         FROM workouts
+        WHERE deletedAt IS NULL
+        ORDER BY position ASC`
     );
   }
 
   async renameWorkout(workoutId, nextName) {
-    await this.db.runAsync(`UPDATE workouts SET name=? WHERE workoutId=?`, [
-      String(nextName ?? "").trim(),
-      String(workoutId),
-    ]);
+    const t = nowMs();
+    await this.db.runAsync(
+      `UPDATE workouts
+          SET name=?,
+              updatedAt=?,
+              dirty=1
+        WHERE workoutId=?
+          AND deletedAt IS NULL`,
+      [String(nextName ?? "").trim(), t, String(workoutId)]
+    );
   }
 
   async deleteWorkout(workoutId) {
-    await this.db.runAsync(`DELETE FROM workouts WHERE workoutId=?`, [
-      String(workoutId),
-    ]);
+    const t = nowMs();
+    await this.db.runAsync(
+      `UPDATE workouts
+        SET deletedAt=?,
+            updatedAt=?,
+            dirty=1
+      WHERE workoutId=?`,
+      [t, t, String(workoutId)]
+    );
   }
 
   async swapWorkoutPositions(idA, idB) {
     const a = await this.db.getFirstAsync(
-      `SELECT position FROM workouts WHERE workoutId=?`,
+      `SELECT position FROM workouts WHERE workoutId=? AND deletedAt IS NULL`,
       [idA]
     );
     const b = await this.db.getFirstAsync(
-      `SELECT position FROM workouts WHERE workoutId=?`,
+      `SELECT position FROM workouts WHERE workoutId=? AND deletedAt IS NULL`,
       [idB]
     );
     if (!a || !b) return;
 
+    const t = nowMs();
+
     await this.db.withTransactionAsync(async () => {
       await this.db.runAsync(
-        `UPDATE workouts SET position=? WHERE workoutId=?`,
-        [b.position, idA]
+        `UPDATE workouts
+          SET position=?, updatedAt=?, dirty=1
+        WHERE workoutId=?`,
+        [b.position, t, idA]
       );
       await this.db.runAsync(
-        `UPDATE workouts SET position=? WHERE workoutId=?`,
-        [a.position, idB]
+        `UPDATE workouts
+          SET position=?, updatedAt=?, dirty=1
+        WHERE workoutId=?`,
+        [a.position, t, idB]
       );
     });
-    console.log(
-      "swap",
-      idA,
-      "posA=",
-      a?.position,
-      " <-> ",
-      idB,
-      "posB=",
-      b?.position
-    );
   }
 
   //EXERCISE CRUD-EXERCISE CRUD-EXERCISE CRUD-EXERCISE CRUD-EXERCISE CRUD-
 
   async ensureExercise(exerciseId, rawName, type, units = {}) {
-    const name = normalizeName(rawName);
+    const nameKey = normalizeName(rawName);
+    const t = nowMs();
+    const exId = String(exerciseId ?? "").trim();
 
+    // if have ID, try by ID first
+    if (exId) {
+      const byId = await this.db.getFirstAsync(
+        `SELECT exerciseId FROM exercises WHERE exerciseId=? LIMIT 1`,
+        [exId]
+      );
+
+      if (byId?.exerciseId) {
+        await this.db.runAsync(
+          `UPDATE exercises
+              SET name=?,
+                  type=?,
+                  quantityUnit=?,
+                  countUnit=?,
+                  deletedAt=NULL,
+                  updatedAt=?,
+                  dirty=1
+            WHERE exerciseId=?`,
+          [
+            String(rawName ?? "").trim(),
+            String(type ?? "weight_reps"),
+            units.quantityUnit ?? "",
+            units.countUnit ?? "",
+            t,
+            exId,
+          ]
+        );
+        return exId;
+      }
+    }
+
+    //or else find by name
     const existing = await this.db.getFirstAsync(
-      `SELECT exerciseId
-         FROM exercises
-        WHERE lower(name)=?
-        LIMIT 1`,
-      [name]
+      `SELECT exerciseId FROM exercises WHERE lower(name)=? LIMIT 1`,
+      [nameKey]
     );
 
-    if (existing?.exerciseId) return existing.exerciseId;
+    if (existing?.exerciseId) {
+      await this.db.runAsync(
+        `UPDATE exercises
+            SET name=?,
+                type=?,
+                quantityUnit=?,
+                countUnit=?,
+                deletedAt=NULL,
+                updatedAt=?,
+                dirty=1
+          WHERE exerciseId=?`,
+        [
+          String(rawName ?? "").trim(),
+          String(type ?? "weight_reps"),
+          units.quantityUnit ?? "",
+          units.countUnit ?? "",
+          t,
+          existing.exerciseId,
+        ]
+      );
+      return existing.exerciseId;
+    }
+
+    //insert new
+    const finalId = exId || newId();
 
     await this.db.runAsync(
-      `INSERT INTO exercises (exerciseId, name, type, quantityUnit, countUnit)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO exercises
+         (exerciseId, name, type, quantityUnit, countUnit, updatedAt, deletedAt, dirty)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, 1)`,
       [
-        String(exerciseId),
+        finalId,
         String(rawName ?? "").trim(),
         String(type ?? "weight_reps"),
         units.quantityUnit ?? "",
         units.countUnit ?? "",
+        t,
       ]
     );
-    return exerciseId;
+
+    return finalId;
   }
 
   async getAllExercises() {
     return await this.db.getAllAsync(
-      `SELECT exerciseId, name, type, quantityUnit, countUnit FROM exercises`
+      `SELECT exerciseId, name, type, quantityUnit, countUnit
+         FROM exercises
+        WHERE deletedAt IS NULL`
     );
   }
 
@@ -295,15 +443,24 @@ class SqliteAdapter {
     const next = await this.db.getFirstAsync(
       `SELECT COALESCE(MAX(position),0)+1 AS m
          FROM workout_exercises
-        WHERE workoutId=?`,
+        WHERE workoutId=?
+          AND deletedAt IS NULL`,
       [workoutId]
     );
     const nextPos = next?.m ?? 1;
 
+    const t = nowMs();
+
     await this.db.runAsync(
-      `INSERT INTO workout_exercises (workoutId, exerciseId, position)
-       VALUES (?, ?, ?)`,
-      [workoutId, exerciseId, nextPos]
+      `INSERT INTO workout_exercises
+         (workoutId, exerciseId, position, updatedAt, deletedAt, dirty)
+       VALUES (?, ?, ?, ?, NULL, 1)
+       ON CONFLICT(workoutId, exerciseId) DO UPDATE SET
+         position=excluded.position,
+         deletedAt=NULL,
+         updatedAt=excluded.updatedAt,
+         dirty=1`,
+      [workoutId, exerciseId, nextPos, t]
     );
   }
 
@@ -314,58 +471,86 @@ class SqliteAdapter {
          FROM workout_exercises we
          JOIN exercises e USING (exerciseId)
         WHERE we.workoutId=?
+          AND we.deletedAt IS NULL
+          AND e.deletedAt IS NULL
         ORDER BY we.position DESC`,
       [workoutId]
     );
   }
 
   async removeExerciseFromWorkout(workoutId, exerciseId) {
+    const t = nowMs();
     await this.db.runAsync(
-      `DELETE FROM workout_exercises WHERE workoutId=? AND exerciseId=?`,
-      [workoutId, exerciseId]
+      `UPDATE workout_exercises
+          SET deletedAt=?,
+              updatedAt=?,
+              dirty=1
+        WHERE workoutId=?
+          AND exerciseId=?`,
+      [t, t, workoutId, exerciseId]
     );
   }
 
   async swapExercisePositions(workoutId, exA, exB) {
     const a = await this.db.getFirstAsync(
-      `SELECT position FROM workout_exercises WHERE workoutId=? AND exerciseId=?`,
+      `SELECT position
+         FROM workout_exercises
+        WHERE workoutId=? AND exerciseId=? AND deletedAt IS NULL`,
       [workoutId, exA]
     );
     const b = await this.db.getFirstAsync(
-      `SELECT position FROM workout_exercises WHERE workoutId=? AND exerciseId=?`,
+      `SELECT position
+         FROM workout_exercises
+        WHERE workoutId=? AND exerciseId=? AND deletedAt IS NULL`,
       [workoutId, exB]
     );
     if (!a || !b) return;
 
+    const t = nowMs();
+
     await this.db.withTransactionAsync(async () => {
       await this.db.runAsync(
-        `UPDATE workout_exercises SET position=? WHERE workoutId=? AND exerciseId=?`,
-        [b.position, workoutId, exA]
+        `UPDATE workout_exercises
+            SET position=?, updatedAt=?, dirty=1
+          WHERE workoutId=? AND exerciseId=?`,
+        [b.position, t, workoutId, exA]
       );
       await this.db.runAsync(
-        `UPDATE workout_exercises SET position=? WHERE workoutId=? AND exerciseId=?`,
-        [a.position, workoutId, exB]
+        `UPDATE workout_exercises
+            SET position=?, updatedAt=?, dirty=1
+          WHERE workoutId=? AND exerciseId=?`,
+        [a.position, t, workoutId, exB]
       );
     });
   }
 
   async renameExercise(exerciseId, nextName) {
-    await this.db.runAsync(`UPDATE exercises SET name=? WHERE exerciseId=?`, [
-      String(nextName ?? "").trim(),
-      String(exerciseId),
-    ]);
+    const t = nowMs();
+    await this.db.runAsync(
+      `UPDATE exercises
+          SET name=?,
+              updatedAt=?,
+              dirty=1
+        WHERE exerciseId=?
+          AND deletedAt IS NULL`,
+      [String(nextName ?? "").trim(), t, String(exerciseId)]
+    );
   }
 
   async updateExerciseUnits(exerciseId, unitsPatch = {}) {
     const q = unitsPatch.quantityUnit ?? null;
     const c = unitsPatch.countUnit ?? null;
+    const t = nowMs();
 
     await this.db.runAsync(
       `UPDATE exercises
           SET quantityUnit = CASE WHEN ? IS NULL THEN quantityUnit ELSE ? END,
-              countUnit    = CASE WHEN ? IS NULL THEN countUnit    ELSE ? END
-        WHERE exerciseId=?`,
-      [q, q, c, c, String(exerciseId)]
+              countUnit    = CASE WHEN ? IS NULL THEN countUnit    ELSE ? END,
+              updatedAt=?,
+              dirty=1
+        WHERE exerciseId=?
+          AND deletedAt IS NULL`,
+      [q, q, c, c, t, String(exerciseId)]
     );
   }
 
@@ -375,30 +560,35 @@ class SqliteAdapter {
     const exercises = await this.db.getAllAsync(
       `SELECT exerciseId, name, type, quantityUnit, countUnit
          FROM exercises
+         WHERE deletedAt IS NULL
         ORDER BY name COLLATE NOCASE ASC`
     );
 
     const workouts = await this.db.getAllAsync(
       `SELECT workoutId, name, position
          FROM workouts
+         WHERE deletedAt IS NULL
         ORDER BY position ASC, workoutId ASC`
     );
 
     const we = await this.db.getAllAsync(
       `SELECT workoutId, exerciseId, position
          FROM workout_exercises
+         WHERE deletedAt IS NULL
         ORDER BY workoutId ASC, position ASC`
     );
 
     const sessions = await this.db.getAllAsync(
       `SELECT exerciseId, utcKey, notes
          FROM sessions
+         WHERE deletedAt IS NULL
         ORDER BY exerciseId ASC, utcKey ASC`
     );
 
     const sets = await this.db.getAllAsync(
       `SELECT setId, exerciseId, utcKey, quantity, quantityUnitUsed, count, countUnitUsed, orderIndex
          FROM sets
+         WHERE deletedAt IS NULL
         ORDER BY exerciseId ASC, utcKey ASC, orderIndex ASC`
     );
 
@@ -492,7 +682,9 @@ class SqliteAdapter {
     // import exercises
     const localIdByNameKey = {};
     {
-      const existing = await this.getAllExercises(); // [{exerciseId,name,type,quantityUnit,countUnit}]
+      const existing = await this.db.getAllAsync(
+        `SELECT exerciseId, name FROM exercises`
+      ); // [{exerciseId,name,type,quantityUnit,countUnit}]
       for (const e of existing) {
         localIdByNameKey[normalizeName(e.name)] = e.exerciseId;
       }
@@ -503,9 +695,7 @@ class SqliteAdapter {
 
       if (!localId) {
         localId = await this.ensureExercise(
-          e.importExerciseId ||
-            crypto.randomUUID?.() ||
-            String(Date.now()) + Math.random(),
+          e.importExerciseId || newId(),
           e.name,
           e.type,
           { quantityUnit: e.quantityUnit, countUnit: e.countUnit }
@@ -522,10 +712,10 @@ class SqliteAdapter {
     const sessionsResolved = [];
     for (const s of sessions) {
       const nameKey = importIdToNameKey[s.exerciseId]; // get the exercise name for this session
-      if (!nameKey) continue; // orphan in import → skip
+      if (!nameKey) continue; // orphan in import so skip
 
       const localId = localIdByNameKey[nameKey]; // find local exercise id by name
-      if (!localId) continue; // should never happen hopefully
+      if (!localId) continue; // pls never never happen hopefully
 
       sessionsResolved.push({
         exerciseId: localId,
@@ -542,7 +732,7 @@ class SqliteAdapter {
       if (!localId) continue;
 
       setsResolved.push({
-        id: x.setId || String(Date.now()) + Math.random(),
+        id: x.setId || newId(),
         exerciseId: localId,
         utcKey: x.utcKey,
         quantity: x.quantity ?? null,
@@ -553,10 +743,39 @@ class SqliteAdapter {
       });
     }
 
+    {
+      const seen = new Set();
+      for (const s of setsResolved) {
+        if (!s.id) {
+          s.id = newId();
+          continue;
+        }
+        if (seen.has(s.id)) s.id = newId();
+        seen.add(s.id);
+      }
+    }
+
+    {
+      const ids = [...new Set(setsResolved.map((x) => x.id).filter(Boolean))];
+      if (ids.length) {
+        const placeholders = ids.map(() => "?").join(",");
+        const existing = await this.db.getAllAsync(
+          `SELECT setId FROM sets WHERE setId IN (${placeholders})`,
+          ids
+        );
+        const taken = new Set(existing.map((r) => r.setId));
+        for (const s of setsResolved) {
+          if (s.id && taken.has(s.id)) s.id = newId();
+        }
+      }
+    }
+
     // insert into sessions + sets into db
     for (const s of sessionsResolved) {
       const existing = await this.db.getFirstAsync(
-        `SELECT notes FROM sessions WHERE exerciseId=? AND utcKey=?`,
+        `SELECT notes
+           FROM sessions
+          WHERE exerciseId=? AND utcKey=? AND deletedAt IS NULL`,
         [s.exerciseId, s.utcKey]
       );
 
@@ -571,7 +790,10 @@ class SqliteAdapter {
       } else {
         // session exists
         const existingSets = await this.db.getAllAsync(
-          `SELECT setId FROM sets WHERE exerciseId=? AND utcKey=? LIMIT 1`,
+          `SELECT setId
+             FROM sets
+            WHERE exerciseId=? AND utcKey=? AND deletedAt IS NULL
+            LIMIT 1`,
           [s.exerciseId, s.utcKey]
         );
 
@@ -600,39 +822,97 @@ class SqliteAdapter {
   }
 
   async deleteExerciseEverywhere(exerciseId) {
+    const t = nowMs();
     await this.db.withTransactionAsync(async () => {
-      await this.db.runAsync(`DELETE FROM sets WHERE exerciseId=?`, [
-        exerciseId,
-      ]);
-      await this.db.runAsync(`DELETE FROM sessions WHERE exerciseId=?`, [
-        exerciseId,
-      ]);
       await this.db.runAsync(
-        `DELETE FROM workout_exercises WHERE exerciseId=?`,
-        [exerciseId]
+        `UPDATE sets
+            SET deletedAt=?, updatedAt=?, dirty=1
+          WHERE exerciseId=?`,
+        [t, t, exerciseId]
       );
-      await this.db.runAsync(`DELETE FROM exercises WHERE exerciseId=?`, [
-        exerciseId,
-      ]);
+
+      await this.db.runAsync(
+        `UPDATE sessions
+            SET deletedAt=?, updatedAt=?, dirty=1
+          WHERE exerciseId=?`,
+        [t, t, exerciseId]
+      );
+
+      await this.db.runAsync(
+        `UPDATE workout_exercises
+            SET deletedAt=?, updatedAt=?, dirty=1
+          WHERE exerciseId=?`,
+        [t, t, exerciseId]
+      );
+
+      await this.db.runAsync(
+        `UPDATE exercises
+            SET deletedAt=?, updatedAt=?, dirty=1
+          WHERE exerciseId=?`,
+        [t, t, exerciseId]
+      );
     });
   }
 
   async deleteExerciseHistoryInRange(exerciseId, fromUtcKey, toUtcKey) {
+    const t = nowMs();
+
     await this.db.withTransactionAsync(async () => {
       await this.db.runAsync(
-        `DELETE FROM sets
-          WHERE exerciseId=? AND utcKey BETWEEN ? AND ?`,
-        [exerciseId, fromUtcKey, toUtcKey]
+        `UPDATE sets
+            SET deletedAt=?, updatedAt=?, dirty=1
+          WHERE exerciseId=?
+            AND utcKey BETWEEN ? AND ?
+            AND deletedAt IS NULL`,
+        [t, t, exerciseId, fromUtcKey, toUtcKey]
       );
 
       await this.db.runAsync(
-        `DELETE FROM sessions
+        `UPDATE sessions
+            SET deletedAt=?, updatedAt=?, dirty=1
           WHERE exerciseId=?
             AND utcKey BETWEEN ? AND ?
-            AND utcKey NOT IN (
-              SELECT DISTINCT utcKey FROM sets WHERE exerciseId=?
+            AND deletedAt IS NULL
+            AND NOT EXISTS (
+              SELECT 1
+                FROM sets
+               WHERE sets.exerciseId = sessions.exerciseId
+                 AND sets.utcKey = sessions.utcKey
+                 AND sets.deletedAt IS NULL
             )`,
-        [exerciseId, fromUtcKey, toUtcKey, exerciseId]
+        [t, t, exerciseId, fromUtcKey, toUtcKey]
+      );
+    });
+  }
+
+  // purge timer with cool name
+  static TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+  async purgeDeleted({
+    retentionMs = SqliteAdapter.TOMBSTONE_RETENTION_MS,
+  } = {}) {
+    const cutoff = nowMs() - retentionMs;
+
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `DELETE FROM sets WHERE deletedAt IS NOT NULL AND deletedAt < ?`,
+        [cutoff]
+      );
+      await this.db.runAsync(
+        `DELETE FROM sessions WHERE deletedAt IS NOT NULL AND deletedAt < ?`,
+        [cutoff]
+      );
+      await this.db.runAsync(
+        `DELETE FROM workout_exercises WHERE deletedAt IS NOT NULL AND deletedAt < ?`,
+        [cutoff]
+      );
+      await this.db.runAsync(
+        `DELETE FROM exercises WHERE deletedAt IS NOT NULL AND deletedAt < ?`,
+        [cutoff]
+      );
+      await this.db.runAsync(
+        `DELETE FROM workouts WHERE deletedAt IS NOT NULL AND deletedAt < ?`,
+        [cutoff]
       );
     });
   }

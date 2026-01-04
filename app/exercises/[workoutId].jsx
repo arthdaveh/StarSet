@@ -14,6 +14,7 @@ import {
   formatPrettyDate,
 } from "../../components/general/metrics";
 import { storage } from "../../storage/sqliteAdapter";
+import { newId } from "../../storage/id";
 
 //yeah this is a nightmare
 export default function WorkoutScreen() {
@@ -216,7 +217,7 @@ export default function WorkoutScreen() {
   ) {
     const nameRaw = nameRawFromChild ?? draftExerciseName;
     const name = normalizeName(nameRaw);
-    const idFormat = Date.now().toString();
+    const idFormat = newId();
 
     // 1) No name or Already in workout
     if (!name) return;

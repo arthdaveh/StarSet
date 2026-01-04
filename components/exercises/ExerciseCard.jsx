@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 import { EXERCISE_TYPES } from "../general/exerciseTypes";
+import { newId } from "../../storage/id";
 
 //this is getting so messy i am cooked lmaooooooo sorry
 
@@ -153,7 +154,7 @@ const ExerciseCard = ({
       //NEW SETS
       if (canPushQ && canPushC) {
         updated.push({
-          id: Date.now().toString(),
+          id: newId(),
           ...(cfg.showQ ? { quantity: qNew, quantityUnitUsed: qUnit } : {}),
           ...(cfg.showC ? { count: cNew, countUnitUsed: cUnit } : {}),
         });
