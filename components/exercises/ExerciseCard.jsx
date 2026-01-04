@@ -29,6 +29,10 @@ const ExerciseCard = ({
   unitOptions,
   utils,
   type,
+  onReorder,
+  selectedForReorder,
+  isReordering,
+  onSelectForReorder,
 }) => {
   const KG_PER_LB = 0.45359237;
   const LB_PER_KG = 1 / KG_PER_LB;
@@ -203,146 +207,265 @@ const ExerciseCard = ({
   }
 
   return (
-    <View key={id} style={styles.card}>
-      <View style={styles.setRow}>
-        {/* <Text style={styles.cardTitle}></Text> */}
-        {isRenaming ? (
-          <View style={styles.renameRow}>
-            <TextInput
-              style={styles.renameInput}
-              value={renameDraft}
-              onChangeText={setRenameDraft}
-              placeholder="Exercise name"
-              placeholderTextColor="#888"
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={() => {
-                const next = renameDraft.trim();
-                if (next) onRename?.(id, next);
-                setIsRenaming(false);
-              }}
-            />
-            <Pressable
-              style={styles.renameBtn}
-              onPress={() => setIsRenaming(false)}
-            >
-              <Text style={styles.renameBtnText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              style={styles.renameBtn}
-              onPress={() => {
-                const next = renameDraft.trim();
-                if (next) onRename?.(id, next);
-                setIsRenaming(false);
-              }}
-            >
-              <Text style={styles.renameBtnText}>Save</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            {/* <Text style={styles.cardTitle}>{name}</Text> */}
-            <Pressable
-              hitSlop={8}
-              onLongPress={() => {
-                Alert.alert(name, "What do you like to do?", [
-                  { text: "Move up", onPress: () => onMove?.(id, "up") },
-                  { text: "Move down", onPress: () => onMove?.(id, "down") },
-                  {
-                    text: "Rename",
-                    onPress: openRename,
-                  },
-                  {
-                    text: "Remove from workout",
-                    style: "destructive",
-                    onPress: () => onRemove?.(id),
-                  },
-                  { text: "Cancel", style: "cancel" },
-                ]);
-              }}
-              style={({ pressed }) => [
-                { opacity: pressed ? 0.5 : 1 },
-              ]}
-            >
-              <Text style={styles.cardTitle}>{name}</Text>
-            </Pressable>
-          </>
-        )}
-      </View>
-
-      <Pressable
-        style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}
-        onPress={() => onOpenHistory?.(id)}
+    <Pressable
+      onPress={() => {
+        if (isReordering) {
+          onSelectForReorder?.(id);
+          return;
+        }
+      }}
+    >
+      <View
+        key={id}
+        style={[styles.card, selectedForReorder && { borderColor: "white" }]}
       >
-        <Text style={styles.previousSetTitle}>History ›</Text>
-        <Text style={styles.previousSet}>
-          {prev
-            ? `${utils.formatPrettyDate(prev.date)} : ${prevSummary}`
-            : "--"}
-        </Text>
-        {prevNotes ? <Text style={styles.previousSet}>{prevNotes}</Text> : null}
-      </Pressable>
-
-      <View style={styles.setsBlock}>
-        {/* Previous Sets Display */}
-        {sets.map((s, i) => {
-          const storedQ = s.quantity;
-          const storedUnitQ = s.quantityUnitUsed ?? qUnit;
-          let displayQ = storedQ;
-          if (cfg.showQ && qUnit && storedQ != null) {
-            displayQ = utils.convertWeight(storedQ, storedUnitQ, qUnit);
-          }
-
-          const draft = rowDrafts[s.id] ?? {};
-          const quantityValue = cfg.showQ
-            ? draft.quantityDraft ?? String(utils.formatNum(displayQ))
-            : "";
-          const countValue = cfg.showC
-            ? draft.countDraft ?? String(s.count ?? "")
-            : "";
-
-          return (
-            <Pressable
-              key={s.id}
-              onLongPress={() => {
-                Alert.alert(
-                  "Delete set?",
-                  `Set ${i + 1}: ${draft.quantityDraft || s.quantity} × ${
-                    draft.countDraft || s.count
-                  }`,
-                  [
-                    { text: "Cancel", style: "cancel" },
+        <View style={styles.setRow}>
+          {/* <Text style={styles.cardTitle}></Text> */}
+          {isRenaming ? (
+            <View style={styles.renameRow}>
+              <TextInput
+                style={styles.renameInput}
+                value={renameDraft}
+                onChangeText={setRenameDraft}
+                placeholder="Exercise name"
+                placeholderTextColor="#888"
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  const next = renameDraft.trim();
+                  if (next) onRename?.(id, next);
+                  setIsRenaming(false);
+                }}
+              />
+              <Pressable
+                style={styles.renameBtn}
+                onPress={() => setIsRenaming(false)}
+              >
+                <Text style={styles.renameBtnText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.renameBtn}
+                onPress={() => {
+                  const next = renameDraft.trim();
+                  if (next) onRename?.(id, next);
+                  setIsRenaming(false);
+                }}
+              >
+                <Text style={styles.renameBtnText}>Save</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              {/* <Text style={styles.cardTitle}>{name}</Text> */}
+              <Pressable
+                hitSlop={8}
+                onLongPress={() => {
+                  Alert.alert(name, "What do you like to do?", [
+                    //{ text: "Move up", onPress: () => onMove?.(id, "up") },
+                    //{ text: "Move down", onPress: () => onMove?.(id, "down") },
+                    { text: "Reorder", onPress: () => onReorder?.(id) },
                     {
-                      text: "Delete",
-                      style: "destructive",
-                      onPress: () => deleteSet(s.id),
+                      text: "Rename",
+                      onPress: openRename,
                     },
-                  ]
-                );
-              }}
+                    {
+                      text: "Remove from workout",
+                      style: "destructive",
+                      onPress: () => onRemove?.(id),
+                    },
+                    { text: "Cancel", style: "cancel" },
+                  ]);
+                }}
+                style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}
+              >
+                <Text style={styles.cardTitle}>{name}</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}
+          onPress={() => onOpenHistory?.(id)}
+        >
+          <Text style={styles.previousSetTitle}>History ›</Text>
+          <Text style={styles.previousSet}>
+            {prev
+              ? `${utils.formatPrettyDate(prev.date)} : ${prevSummary}`
+              : "--"}
+          </Text>
+          {prevNotes ? (
+            <Text style={styles.previousSet}>{prevNotes}</Text>
+          ) : null}
+        </Pressable>
+
+        <View style={styles.setsBlock}>
+          {/* Previous Sets Display */}
+          {sets.map((s, i) => {
+            const storedQ = s.quantity;
+            const storedUnitQ = s.quantityUnitUsed ?? qUnit;
+            let displayQ = storedQ;
+            if (cfg.showQ && qUnit && storedQ != null) {
+              displayQ = utils.convertWeight(storedQ, storedUnitQ, qUnit);
+            }
+
+            const draft = rowDrafts[s.id] ?? {};
+            const quantityValue = cfg.showQ
+              ? draft.quantityDraft ?? String(utils.formatNum(displayQ))
+              : "";
+            const countValue = cfg.showC
+              ? draft.countDraft ?? String(s.count ?? "")
+              : "";
+
+            return (
+              <Pressable
+                key={s.id}
+                onLongPress={() => {
+                  Alert.alert(
+                    "Delete set?",
+                    `Set ${i + 1}: ${draft.quantityDraft || s.quantity} × ${
+                      draft.countDraft || s.count
+                    }`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => deleteSet(s.id),
+                      },
+                    ]
+                  );
+                }}
+                style={({ pressed }) => [
+                  styles.setRow,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <View style={styles.setNumber}>
+                  <Text style={styles.setNumberText}>{i + 1}</Text>
+                </View>
+
+                {cfg.showQ && (
+                  <View style={styles.inputGroup}>
+                    <TextInput
+                      style={styles.setInput}
+                      value={quantityValue}
+                      onChangeText={(t) =>
+                        setRowDrafts((prev) => ({
+                          ...prev,
+                          [s.id]: { ...(prev[s.id] ?? {}), quantityDraft: t },
+                        }))
+                      }
+                      keyboardType="decimal-pad"
+                      returnKeyType="done"
+                      onSubmitEditing={handleSetSaveAll}
+                      onBlur={handleSetSaveAll}
+                    />
+                    {qUnit ? (
+                      <Pressable
+                        disabled={!isKgOrLbs}
+                        hitSlop={8}
+                        onLongPress={() => {
+                          const opts = uopts.quantity;
+                          if (!opts.length) return;
+                          Alert.alert("Weight unit", "Choose unit", [
+                            ...opts.map((u) => ({
+                              text: u,
+                              onPress: () =>
+                                onChangeUnits?.(id, { quantityUnit: u }),
+                            })),
+                            { text: "Cancel", style: "cancel" },
+                          ]);
+                        }}
+                        style={({ pressed }) => [
+                          styles.setRow,
+                          { opacity: pressed ? 0.5 : 1 },
+                        ]}
+                      >
+                        <Text style={styles.unitBadge}>{qUnit}</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                )}
+
+                {cfg.showC && cfg.showQ && <Text style={styles.times}>×</Text>}
+
+                {cfg.showC && (
+                  <View style={styles.inputGroup}>
+                    <TextInput
+                      ref={(el) => (countRefs.current[s.id] = el)}
+                      style={styles.setInput}
+                      value={countValue}
+                      onChangeText={(t) =>
+                        setRowDrafts((prev) => ({
+                          ...prev,
+                          [s.id]: { ...(prev[s.id] ?? {}), countDraft: t },
+                        }))
+                      }
+                      keyboardType="decimal-pad"
+                      returnKeyType="done"
+                      onSubmitEditing={handleSetSaveAll}
+                      onBlur={handleSetSaveAll}
+                    />
+                    {cUnit ? (
+                      <Pressable
+                        disabled={!isKgOrLbs}
+                        hitSlop={8}
+                        onLongPress={() => {
+                          const opts = uopts.count;
+                          if (!opts.length) return;
+                          Alert.alert("Time unit", "Choose unit", [
+                            ...opts.map((u) => ({
+                              text: u,
+                              onPress: () =>
+                                onChangeUnits?.(id, { countUnit: u }),
+                            })),
+                            { text: "Cancel", style: "cancel" },
+                          ]);
+                        }}
+                      >
+                        <Text style={styles.unitBadge}>{cUnit}</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                )}
+                <View style={styles.dotBox}>
+                  {rowDrafts[s.id] ? <Text style={styles.dot}>•</Text> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+
+          {/* Current Row Display */}
+          {showAddBtn && (
+            <Pressable
               style={({ pressed }) => [
-                styles.setRow,
-                { opacity: pressed ? 0.5 : 1 },
+                styles.addButton,
+                pressed && styles.addButtonPressed,
               ]}
+              onPress={() => setIsAddingSet(true)}
             >
+              <Text style={styles.addButtonText}>+</Text>
+            </Pressable>
+          )}
+          {showNewRow && (
+            <View style={styles.setRow}>
               <View style={styles.setNumber}>
-                <Text style={styles.setNumberText}>{i + 1}</Text>
+                <Text style={styles.newSetNumberText}>{sets.length + 1}?</Text>
               </View>
 
               {cfg.showQ && (
-                <View style={styles.inputGroup}>
+                <View style={styles.newInputGroup}>
                   <TextInput
-                    style={styles.setInput}
-                    value={quantityValue}
-                    onChangeText={(t) =>
-                      setRowDrafts((prev) => ({
-                        ...prev,
-                        [s.id]: { ...(prev[s.id] ?? {}), quantityDraft: t },
-                      }))
-                    }
+                    style={styles.newSetInput}
+                    placeholder={cfg.qLabel}
+                    placeholderTextColor="#888"
+                    value={quantityText}
+                    onChangeText={setQuantityText}
                     keyboardType="decimal-pad"
-                    returnKeyType="done"
-                    onSubmitEditing={handleSetSaveAll}
+                    returnKeyType={cfg.showC ? "next" : "done"}
+                    //blurOnSubmit={false}
+                    onSubmitEditing={() => newCountRef.current?.focus()}
                     onBlur={handleSetSaveAll}
                   />
                   {qUnit ? (
@@ -371,24 +494,21 @@ const ExerciseCard = ({
                   ) : null}
                 </View>
               )}
-
               {cfg.showC && cfg.showQ && <Text style={styles.times}>×</Text>}
-
               {cfg.showC && (
-                <View style={styles.inputGroup}>
+                <View style={styles.newInputGroup}>
                   <TextInput
-                    ref={(el) => (countRefs.current[s.id] = el)}
-                    style={styles.setInput}
-                    value={countValue}
-                    onChangeText={(t) =>
-                      setRowDrafts((prev) => ({
-                        ...prev,
-                        [s.id]: { ...(prev[s.id] ?? {}), countDraft: t },
-                      }))
-                    }
+                    ref={newCountRef}
+                    style={styles.newSetInput}
+                    placeholder={cfg.cLabel}
+                    placeholderTextColor="#888"
+                    value={countText}
+                    onChangeText={setCountText}
                     keyboardType="decimal-pad"
                     returnKeyType="done"
-                    onSubmitEditing={handleSetSaveAll}
+                    onSubmitEditing={() =>
+                      requestAnimationFrame(handleSetSaveAll)
+                    }
                     onBlur={handleSetSaveAll}
                   />
                   {cUnit ? (
@@ -413,110 +533,7 @@ const ExerciseCard = ({
                   ) : null}
                 </View>
               )}
-              <View style={styles.dotBox}>
-                {rowDrafts[s.id] ? <Text style={styles.dot}>•</Text> : null}
-              </View>
-            </Pressable>
-          );
-        })}
-
-        {/* Current Row Display */}
-        {showAddBtn && (
-          <Pressable
-            style={({ pressed }) => [
-              styles.addButton,
-              pressed && styles.addButtonPressed,
-            ]}
-            onPress={() => setIsAddingSet(true)}
-          >
-            <Text style={styles.addButtonText}>+</Text>
-          </Pressable>
-        )}
-        {showNewRow && (
-          <View style={styles.setRow}>
-            <View style={styles.setNumber}>
-              <Text style={styles.newSetNumberText}>{sets.length + 1}?</Text>
-            </View>
-
-            {cfg.showQ && (
-              <View style={styles.newInputGroup}>
-                <TextInput
-                  style={styles.newSetInput}
-                  placeholder={cfg.qLabel}
-                  placeholderTextColor="#888"
-                  value={quantityText}
-                  onChangeText={setQuantityText}
-                  keyboardType="decimal-pad"
-                  returnKeyType={cfg.showC ? "next" : "done"}
-                  //blurOnSubmit={false}
-                  onSubmitEditing={() => newCountRef.current?.focus()}
-                  onBlur={handleSetSaveAll}
-                />
-                {qUnit ? (
-                  <Pressable
-                    disabled={!isKgOrLbs}
-                    hitSlop={8}
-                    onLongPress={() => {
-                      const opts = uopts.quantity;
-                      if (!opts.length) return;
-                      Alert.alert("Weight unit", "Choose unit", [
-                        ...opts.map((u) => ({
-                          text: u,
-                          onPress: () =>
-                            onChangeUnits?.(id, { quantityUnit: u }),
-                        })),
-                        { text: "Cancel", style: "cancel" },
-                      ]);
-                    }}
-                    style={({ pressed }) => [
-                      styles.setRow,
-                      { opacity: pressed ? 0.5 : 1 },
-                    ]}
-                  >
-                    <Text style={styles.unitBadge}>{qUnit}</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            )}
-            {cfg.showC && cfg.showQ && <Text style={styles.times}>×</Text>}
-            {cfg.showC && (
-              <View style={styles.newInputGroup}>
-                <TextInput
-                  ref={newCountRef}
-                  style={styles.newSetInput}
-                  placeholder={cfg.cLabel}
-                  placeholderTextColor="#888"
-                  value={countText}
-                  onChangeText={setCountText}
-                  keyboardType="decimal-pad"
-                  returnKeyType="done"
-                  onSubmitEditing={() =>
-                    requestAnimationFrame(handleSetSaveAll)
-                  }
-                  onBlur={handleSetSaveAll}
-                />
-                {cUnit ? (
-                  <Pressable
-                    disabled={!isKgOrLbs}
-                    hitSlop={8}
-                    onLongPress={() => {
-                      const opts = uopts.count;
-                      if (!opts.length) return;
-                      Alert.alert("Time unit", "Choose unit", [
-                        ...opts.map((u) => ({
-                          text: u,
-                          onPress: () => onChangeUnits?.(id, { countUnit: u }),
-                        })),
-                        { text: "Cancel", style: "cancel" },
-                      ]);
-                    }}
-                  >
-                    <Text style={styles.unitBadge}>{cUnit}</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            )}
-            {/*  
+              {/*  
           <Pressable
             style={({ pressed }) => [
               styles.saveButton,
@@ -527,30 +544,31 @@ const ExerciseCard = ({
             <Text style={styles.saveBtnText}>Save</Text>
           </Pressable>
           */}
-            <View style={styles.dotBox}>
-              {quantityText !== "" || countText !== "" ? (
-                <Text style={styles.dot}>•</Text>
-              ) : null}
+              <View style={styles.dotBox}>
+                {quantityText !== "" || countText !== "" ? (
+                  <Text style={styles.dot}>•</Text>
+                ) : null}
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        <Text style={styles.notesTitle}>Notes</Text>
-        <View style={styles.setRow}>
-          <TextInput
-            style={styles.notesInput}
-            placeholder={notesSuggestion || "Notes"}
-            placeholderTextColor="#888"
-            value={notesText}
-            onChangeText={setNotesText}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            onBlur={handleSetSaveAll}
-          />
+          <Text style={styles.notesTitle}>Notes</Text>
+          <View style={styles.setRow}>
+            <TextInput
+              style={styles.notesInput}
+              placeholder={notesSuggestion || "Notes"}
+              placeholderTextColor="#888"
+              value={notesText}
+              onChangeText={setNotesText}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              onBlur={handleSetSaveAll}
+            />
+          </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 };
 
@@ -665,8 +683,7 @@ const styles = StyleSheet.create({
   saveButtonPressed: { borderColor: "white" },
   saveBtnText: { color: "white", fontWeight: "700" },
   saveRightWrapper: {
-    flexGrow: 1, 
-
+    flexGrow: 1,
   },
 
   dotBox: {
