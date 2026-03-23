@@ -15,6 +15,7 @@ import {
 } from "../../components/general/metrics";
 import { storage } from "../../storage/sqliteAdapter";
 import { newId } from "../../storage/id";
+import { requestSync } from "../../storage/syncService";
 
 //yeah this is a nightmare
 export default function WorkoutScreen() {
@@ -204,6 +205,7 @@ export default function WorkoutScreen() {
           notes: nextForDate.notes,
           sets: nextForDate.sets,
         })
+        .then(() => requestSync())
         .catch((e) => console.warn("saveSession failed:", e));
 
       return next;
@@ -279,6 +281,7 @@ export default function WorkoutScreen() {
 
       //link it to this workout
       await storage.addExerciseToWorkout(workoutId, ensuredId);
+      requestSync();
     } catch (e) {
       console.warn("persist new exercise/link failed:", e);
     }
@@ -289,6 +292,7 @@ export default function WorkoutScreen() {
 
     storage
       .removeExerciseFromWorkout(workoutId, exerciseId)
+      .then(() => requestSync())
       .catch((e) => console.warn("removeExerciseFromWorkout failed:", e));
   }
 
@@ -311,6 +315,7 @@ export default function WorkoutScreen() {
 
     storage
       .renameExercise(exerciseId, clean)
+      .then(() => requestSync())
       .catch((e) => console.warn("renameExercise failed:", e));
   }
 
@@ -334,6 +339,7 @@ export default function WorkoutScreen() {
 
     try {
       await storage.addExerciseToWorkout(workoutId, eid);
+      requestSync();
     } catch (e) {
       console.warn("link existing exercise failed:", e);
     }
@@ -367,6 +373,7 @@ export default function WorkoutScreen() {
       // persist swap in DB (background)
       storage
         .swapExercisePositions(workoutId, a, b)
+        .then(() => requestSync())
         .catch((e) => console.warn("swapExercisePositions failed:", e));
 
       return newArr;
@@ -387,6 +394,7 @@ export default function WorkoutScreen() {
         quantityUnit: unitsPatch.quantityUnit,
         countUnit: unitsPatch.countUnit,
       })
+      .then(() => requestSync())
       .catch((e) => console.warn("updateExerciseUnits failed:", e));
   }
 

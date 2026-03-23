@@ -125,6 +125,211 @@ class SqliteAdapter {
     this.purgeDeleted().catch(() => {});
   }
 
+  //SUPABASE HELPERS- SUPABASE HELPERS- SUPABASE HELPERS- SUPABASE HELPERS- SUPABASE HELPERS-
+
+  async getMeta(key) {
+    const row = await this.db.getFirstAsync(
+      `SELECT value FROM meta WHERE key=?`,
+      [String(key)]
+    );
+    return row?.value ?? null;
+  }
+
+  async setMeta(key, value) {
+    await this.db.runAsync(
+      `INSERT INTO meta (key, value)
+       VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+      [String(key), String(value)]
+    );
+  }
+
+  async getLastSyncMs() {
+    const v = await this.getMeta("last_sync_ms");
+    return v ? Number(v) : 0;
+  }
+
+  async setLastSyncMs(ms) {
+    await this.setMeta("last_sync_ms", Number(ms || 0));
+  }
+
+  //SUPABASE - SUPABASE - SUPABASE - SUPABASE - SUPABASE - SUPABASE - SUPABASE - SUPABASE - SUPABASE
+
+  //SYNC EXERCISES - SYNC EXERCISES - SYNC EXERCISES - SYNC EXERCISES - SYNC EXERCISES - SYNC EXERCISES
+
+  async getDirtyExercises() {
+    return await this.db.getAllAsync(
+      `SELECT exerciseId, name, type, quantityUnit, countUnit, updatedAt, deletedAt
+         FROM exercises
+        WHERE dirty=1`
+    );
+  }
+
+  async markExerciseClean(exerciseId) {
+    await this.db.runAsync(
+      `UPDATE exercises
+          SET dirty=0
+        WHERE exerciseId=?`,
+      [String(exerciseId)]
+    );
+  }
+
+  async getExerciseRow(exerciseId) {
+    return await this.db.getFirstAsync(
+      `SELECT exerciseId, name, type, quantityUnit, countUnit, updatedAt, deletedAt, dirty
+         FROM exercises
+        WHERE exerciseId=?`,
+      [String(exerciseId)]
+    );
+  }
+
+  async upsertExerciseFromRemote(row) {
+    const updatedAt = Number(row.client_updated_ms || 0);
+    const deletedAt = row.deleted_at
+      ? new Date(row.deleted_at).getTime()
+      : null;
+
+    await this.db.runAsync(
+      `INSERT INTO exercises
+         (exerciseId, name, type, quantityUnit, countUnit, updatedAt, deletedAt, dirty)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+       ON CONFLICT(exerciseId) DO UPDATE SET
+         name=excluded.name,
+         type=excluded.type,
+         quantityUnit=excluded.quantityUnit,
+         countUnit=excluded.countUnit,
+         updatedAt=excluded.updatedAt,
+         deletedAt=excluded.deletedAt,
+         dirty=0`,
+      [
+        String(row.exerciseId),
+        String(row.name ?? "").trim(),
+        String(row.type ?? "weight_reps"),
+        row.quantityUnit ?? "",
+        row.countUnit ?? "",
+        updatedAt,
+        deletedAt,
+      ]
+    );
+  }
+
+  //SYNC SESSIONS - SYNC SESSIONS - SYNC SESSIONS - SYNC SESSIONS - SYNC SESSIONS - SYNC SESSIONS
+
+  async getDirtySessions() {
+    return await this.db.getAllAsync(
+      `SELECT exerciseId, utcKey, notes, updatedAt, deletedAt
+         FROM sessions
+        WHERE dirty=1`
+    );
+  }
+
+  async markSessionClean(exerciseId, utcKey) {
+    await this.db.runAsync(
+      `UPDATE sessions
+          SET dirty=0
+        WHERE exerciseId=? AND utcKey=?`,
+      [String(exerciseId), String(utcKey)]
+    );
+  }
+
+  async getSessionRow(exerciseId, utcKey) {
+    return await this.db.getFirstAsync(
+      `SELECT exerciseId, utcKey, notes, updatedAt, deletedAt, dirty
+         FROM sessions
+        WHERE exerciseId=? AND utcKey=?`,
+      [String(exerciseId), String(utcKey)]
+    );
+  }
+
+  async upsertSessionFromRemote(row) {
+    const updatedAt = Number(row.client_updated_ms || 0);
+    const deletedAt = row.deleted_at
+      ? new Date(row.deleted_at).getTime()
+      : null;
+
+    await this.db.runAsync(
+      `INSERT INTO sessions
+         (exerciseId, utcKey, notes, updatedAt, deletedAt, dirty)
+       VALUES (?, ?, ?, ?, ?, 0)
+       ON CONFLICT(exerciseId, utcKey) DO UPDATE SET
+         notes=excluded.notes,
+         updatedAt=excluded.updatedAt,
+         deletedAt=excluded.deletedAt,
+         dirty=0`,
+      [
+        String(row.exerciseId),
+        String(row.utcKey),
+        String(row.notes ?? ""),
+        updatedAt,
+        deletedAt,
+      ]
+    );
+  }
+
+  //SYNC SETS - SYNC SETS - SYNC SETS - SYNC SETS - SYNC SETS - SYNC SETS - SYNC SETS - SYNC SETS
+
+  async getDirtySets() {
+    return await this.db.getAllAsync(
+      `SELECT setId, exerciseId, utcKey, quantity, quantityUnitUsed, count, countUnitUsed, orderIndex, updatedAt, deletedAt
+         FROM sets
+        WHERE dirty=1`
+    );
+  }
+
+  async markSetClean(setId) {
+    await this.db.runAsync(
+      `UPDATE sets
+          SET dirty=0
+        WHERE setId=?`,
+      [String(setId)]
+    );
+  }
+
+  async getSetRow(setId) {
+    return await this.db.getFirstAsync(
+      `SELECT setId, exerciseId, utcKey, quantity, quantityUnitUsed, count, countUnitUsed, orderIndex, updatedAt, deletedAt, dirty
+         FROM sets
+        WHERE setId=?`,
+      [String(setId)]
+    );
+  }
+
+  async upsertSetFromRemote(row) {
+    const updatedAt = Number(row.client_updated_ms || 0);
+    const deletedAt = row.deleted_at
+      ? new Date(row.deleted_at).getTime()
+      : null;
+
+    await this.db.runAsync(
+      `INSERT INTO sets
+         (setId, exerciseId, utcKey, quantity, quantityUnitUsed, count, countUnitUsed, orderIndex, updatedAt, deletedAt, dirty)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+       ON CONFLICT(setId) DO UPDATE SET
+         exerciseId=excluded.exerciseId,
+         utcKey=excluded.utcKey,
+         quantity=excluded.quantity,
+         quantityUnitUsed=excluded.quantityUnitUsed,
+         count=excluded.count,
+         countUnitUsed=excluded.countUnitUsed,
+         orderIndex=excluded.orderIndex,
+         updatedAt=excluded.updatedAt,
+         deletedAt=excluded.deletedAt,
+         dirty=0`,
+      [
+        String(row.setId),
+        String(row.exerciseId),
+        String(row.utcKey),
+        row.quantity ?? null,
+        row.quantityUnitUsed ?? null,
+        row.count ?? null,
+        row.countUnitUsed ?? null,
+        row.orderIndex ?? null,
+        updatedAt,
+        deletedAt,
+      ]
+    );
+  }
+
   //SESSIONS CRUD-SESSIONS CRUD-SESSIONS CRUD-SESSIONS CRUD-SESSIONS CRUD-
 
   async getSessionsMapForExercise(exerciseId) {
@@ -814,6 +1019,7 @@ class SqliteAdapter {
       await this.db.runAsync(`DELETE FROM sets`);
       await this.db.runAsync(`DELETE FROM sessions`);
       await this.db.runAsync(`DELETE FROM exercises`);
+      await this.db.runAsync(`DELETE FROM meta WHERE key='last_sync_ms'`);
     });
   }
 

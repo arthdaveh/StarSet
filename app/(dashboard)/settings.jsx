@@ -15,6 +15,8 @@ import { storage } from "../../storage/sqliteAdapter";
 import { Modal } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "../../lib/supabase";
+import { syncData } from "../../storage/syncService";
 
 const settings = () => {
   //
@@ -94,8 +96,9 @@ const settings = () => {
     React.useCallback(() => {
       (async () => {
         await loadExercises();
+        await loadAuthUser();
       })();
-    }, [loadExercises])
+    }, [loadExercises, loadAuthUser])
   );
 
   const [selectedExerciseId, setSelectedExerciseId] = React.useState(null);
@@ -194,6 +197,117 @@ const settings = () => {
     );
   }, [selectedExerciseId, fromYMD, toYMD, allExercises]);
 
+  //LOGIN - LOGIN - LOGIN - LOGIN - LOGIN - LOGIN - LOGIN - LOGIN
+  const [authEmail, setAuthEmail] = React.useState("");
+  const [authPassword, setAuthPassword] = React.useState("");
+  const [authLoading, setAuthLoading] = React.useState(false);
+  const [authUser, setAuthUser] = React.useState(null);
+
+  const loadAuthUser = React.useCallback(async () => {
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) {
+        console.warn("loadAuthUser failed:", error);
+        return;
+      }
+
+      setAuthUser(user ?? null);
+    } catch (e) {
+      console.warn("loadAuthUser failed:", e);
+    }
+  }, []);
+
+  const onSignUp = React.useCallback(async () => {
+    const email = authEmail.trim();
+    const password = authPassword;
+
+    if (!email || !password) {
+      Alert.alert("Missing info", "Please enter email and password.");
+      return;
+    }
+
+    try {
+      setAuthLoading(true);
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      setAuthUser(data.user ?? null);
+
+      Alert.alert(
+        "Sign up started",
+        "Account created. If your project requires email confirmation, check your inbox before logging in."
+      );
+    } catch (e) {
+      console.warn("signUp failed:", e);
+      Alert.alert("Sign up failed", String(e?.message ?? e));
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [authEmail, authPassword]);
+
+  const onSignIn = React.useCallback(async () => {
+    const email = authEmail.trim();
+    const password = authPassword;
+
+    if (!email || !password) {
+      Alert.alert("Missing info", "Please enter email and password.");
+      return;
+    }
+
+    try {
+      setAuthLoading(true);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      setAuthUser(data.user ?? null);
+
+      if (data.user) {
+        await syncData();
+      }
+
+      await syncData();
+
+      Alert.alert("Logged in", "You are now signed in.");
+    } catch (e) {
+      console.warn("signIn failed:", e);
+      Alert.alert("Login failed", String(e?.message ?? e));
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [authEmail, authPassword]);
+
+  const onSignOut = React.useCallback(async () => {
+    try {
+      setAuthLoading(true);
+
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      setAuthUser(null);
+
+      Alert.alert("Logged out", "You have been signed out.");
+    } catch (e) {
+      console.warn("signOut failed:", e);
+      Alert.alert("Logout failed", String(e?.message ?? e));
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
+
   return (
     //
     <SafeAreaView
@@ -207,6 +321,97 @@ const settings = () => {
       >
         <View style={styles.screen}>
           <Text style={styles.title}>Settings</Text>
+
+          {/* LOGIN LOGOUT  - LOGIN LOGOUT */}
+          <Text style={styles.sectionHeader}>Cloud / Account</Text>
+          <View style={styles.card}>
+            <Text style={styles.label}>
+              {authUser?.email
+                ? `Signed in as ${authUser.email}`
+                : "Not signed in"}
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#666"
+              value={authEmail}
+              onChangeText={setAuthEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#666"
+              value={authPassword}
+              onChangeText={setAuthPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+
+            <View style={styles.authRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.btn,
+                  styles.authBtn,
+                  pressed && styles.btnPressed,
+                  authLoading && { opacity: 0.6 },
+                ]}
+                onPress={onSignIn}
+                disabled={authLoading}
+              >
+                <Text style={styles.btnText}>
+                  {authLoading ? "Working..." : "Log In"}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.btn,
+                  styles.authBtn,
+                  pressed && styles.btnPressed,
+                  authLoading && { opacity: 0.6 },
+                ]}
+                onPress={onSignUp}
+                disabled={authLoading}
+              >
+                <Text style={styles.btnText}>
+                  {authLoading ? "Working..." : "Sign Up"}
+                </Text>
+              </Pressable>
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.btnWarn,
+                pressed && styles.btnPressed,
+                authLoading && { opacity: 0.6 },
+              ]}
+              onPress={onSignOut}
+              disabled={authLoading}
+            >
+              <Text style={styles.btnText}>Log Out</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.btn,
+                pressed && styles.btnPressed,
+              ]}
+              onPress={async () => {
+                try {
+                  await syncData();
+                  Alert.alert("Sync complete", "Exercises synced.");
+                } catch (e) {
+                  console.warn("sync failed:", e);
+                  Alert.alert("Sync failed", String(e?.message ?? e));
+                }
+              }}
+            >
+              <Text style={styles.btnText}>Sync</Text>
+            </Pressable>
+          </View>
 
           {/* Import / Export */}
           <Text style={styles.sectionHeader}>Import / Export</Text>
@@ -482,4 +687,13 @@ const styles = StyleSheet.create({
     borderBottomColor: "#1a1a1a",
   },
   rowText: { color: "#fff" },
+
+  authRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  authBtn: {
+    flex: 1,
+  },
 });
