@@ -206,18 +206,20 @@ const settings = () => {
   const loadAuthUser = React.useCallback(async () => {
     try {
       const {
-        data: { user },
+        data: { session },
         error,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
 
       if (error) {
-        console.warn("loadAuthUser failed:", error);
+        console.warn("loadAuthUser getSession failed:", error);
+        setAuthUser(null);
         return;
       }
 
-      setAuthUser(user ?? null);
+      setAuthUser(session?.user ?? null);
     } catch (e) {
       console.warn("loadAuthUser failed:", e);
+      setAuthUser(null);
     }
   }, []);
 
