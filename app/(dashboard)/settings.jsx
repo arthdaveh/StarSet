@@ -66,7 +66,7 @@ const settings = () => {
 
       Alert.alert(
         "Import complete",
-        "Exercises & sessions merged. Workouts were excluded, you may need to re-create them and add exercises manually. If you don’t see updates immediately, back out and re-enter the screen. "
+        "Exercises & sessions merged. Workouts were excluded, you may need to re-create them and add exercises manually. If you don’t see updates immediately, back out and re-enter the screen. ",
       );
 
       // await refresh();
@@ -84,7 +84,7 @@ const settings = () => {
       const rows = await storage.db.getAllAsync(
         `SELECT exerciseId, name, type, quantityUnit, countUnit
            FROM exercises
-          ORDER BY name ASC`
+          ORDER BY name ASC`,
       );
       setAllExercises(rows);
     } catch (e) {
@@ -98,7 +98,7 @@ const settings = () => {
         await loadExercises();
         await loadAuthUser();
       })();
-    }, [loadExercises, loadAuthUser])
+    }, [loadExercises, loadAuthUser]),
   );
 
   const [selectedExerciseId, setSelectedExerciseId] = React.useState(null);
@@ -144,7 +144,7 @@ const settings = () => {
             }
           },
         },
-      ]
+      ],
     );
   }, [selectedExerciseId, allExercises]);
 
@@ -181,11 +181,11 @@ const settings = () => {
               await storage.deleteExerciseHistoryInRange(
                 selectedExerciseId,
                 fromKey,
-                toKey
+                toKey,
               );
               Alert.alert(
                 "Done",
-                "Selected range was deleted for this exercise."
+                "Selected range was deleted for this exercise.",
               );
             } catch (e) {
               console.warn("deleteExerciseHistoryInRange failed:", e);
@@ -193,7 +193,7 @@ const settings = () => {
             }
           },
         },
-      ]
+      ],
     );
   }, [selectedExerciseId, fromYMD, toYMD, allExercises]);
 
@@ -246,7 +246,7 @@ const settings = () => {
 
       Alert.alert(
         "Sign up started",
-        "Account created. If your project requires email confirmation, check your inbox before logging in."
+        "Account created. If your project requires email confirmation, check your inbox before logging in.",
       );
     } catch (e) {
       console.warn("signUp failed:", e);
@@ -280,8 +280,6 @@ const settings = () => {
       if (data.user) {
         await syncData();
       }
-
-      await syncData();
 
       Alert.alert("Logged in", "You are now signed in.");
     } catch (e) {
@@ -325,6 +323,7 @@ const settings = () => {
           <Text style={styles.title}>Settings</Text>
 
           {/* LOGIN LOGOUT  - LOGIN LOGOUT */}
+          {/*  
           <Text style={styles.sectionHeader}>Cloud / Account</Text>
           <View style={styles.card}>
             <Text style={styles.label}>
@@ -415,6 +414,8 @@ const settings = () => {
             </Pressable>
           </View>
 
+          */}
+
           {/* Import / Export */}
           <Text style={styles.sectionHeader}>Import / Export</Text>
           <View style={styles.card}>
@@ -462,7 +463,7 @@ const settings = () => {
                         Alert.alert("Done", "All data cleared.");
                       },
                     },
-                  ]
+                  ],
                 );
               }}
             >

@@ -37,13 +37,13 @@ export const EXERCISE_TYPES = {
     defaultUnits: { quantityUnit: "km", countUnit: "min" },
   },
   quantity_only: {
-    label: "Quantity (generic)",
+    label: "Quantity",
     display: { showQ: true, showC: false, qLabel: "Quantity", cLabel: "—" },
     unitOptions: { quantity: [], count: [] },
     defaultUnits: { quantityUnit: "qty" },
   },
   quantity_count: {
-    label: "Quantity × Count (generic)",
+    label: "Quantity × Count",
     display: { showQ: true, showC: true, qLabel: "Quantity", cLabel: "Count" },
     unitOptions: { quantity: [], count: [] },
     defaultUnits: { quantityUnit: "qty", countUnit: "ct" },

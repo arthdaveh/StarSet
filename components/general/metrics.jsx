@@ -8,6 +8,34 @@ export function convertWeight(value, from, to) {
   return value;
 }
 
+const M_PER_KM = 1000;
+const M_PER_MI = 1609.344;
+
+export function convertDistance(value, from, to) {
+  if (value == null || Number.isNaN(+value) || from === to) return value;
+  let metres = value;
+  if (from === "km") metres = value * M_PER_KM;
+  else if (from === "mi") metres = value * M_PER_MI;
+  if (to === "km") return metres / M_PER_KM;
+  if (to === "mi") return metres / M_PER_MI;
+  return metres;
+}
+
+export function convertTime(value, from, to) {
+  if (value == null || Number.isNaN(+value) || from === to) return value;
+  if (from === "s" && to === "min") return value / 60;
+  if (from === "min" && to === "s") return value * 60;
+  return value;
+}
+
+export function convertUnit(value, from, to) {
+  if (from === to) return value;
+  if (from === "kg" || from === "lbs") return convertWeight(value, from, to);
+  if (from === "m" || from === "km" || from === "mi") return convertDistance(value, from, to);
+  if (from === "s" || from === "min") return convertTime(value, from, to);
+  return value;
+}
+
 export function formatNum(n) {
   if (n == null || Number.isNaN(+n)) return "";
   const fixed = Math.round(n * 10) / 10;
@@ -60,17 +88,13 @@ export function summarizeSession(sets = [], { qUnit = "", cUnit = "" } = {}) {
     // quantity label
     let qLabel = "";
     if (hasQ) {
-      const dispQ = convertWeight(
-        s.quantity,
-        s.quantityUnitUsed ?? qUnit,
-        qUnit
-      );
+      const dispQ = convertUnit(s.quantity, s.quantityUnitUsed ?? qUnit, qUnit);
       qLabel = qUnit ? `${formatNum(dispQ)}${qUnit}` : `${formatNum(dispQ)}`;
     }
 
-
+    const dispC = convertUnit(s.count, s.countUnitUsed ?? cUnit, cUnit);
     const showCU = cUnit && cUnit !== "ct" ? cUnit : "";
-    const cLabel = `${formatNum(s.count)}${showCU}`;
+    const cLabel = `${formatNum(dispC)}${showCU}`;
 
     const last = segments[segments.length - 1];
 

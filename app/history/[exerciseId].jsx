@@ -5,7 +5,7 @@ import { Calendar } from "react-native-calendars";
 import {
   summarizeSession,
   formatPrettyDate,
-  convertWeight,
+  convertUnit,
   formatNum,
 } from "../../components/general/metrics";
 import { LineChart } from "react-native-gifted-charts";
@@ -91,9 +91,9 @@ export default function HistoryScreen() {
       const maxQty = Math.max(
         ...sets.map((s) =>
           formatNum(
-            convertWeight(s.quantity, s.quantityUnitUsed, unitsObj.qUnit)
-          )
-        )
+            convertUnit(s.quantity, s.quantityUnitUsed, unitsObj.qUnit),
+          ),
+        ),
       );
       const date = localNoonFromYMD(ymd);
 
@@ -133,7 +133,7 @@ export default function HistoryScreen() {
 
   const ymdLocal = (d) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
+      d.getDate(),
     ).padStart(2, "0")}`;
 
   const series12w = useMemo(() => {
@@ -233,10 +233,10 @@ export default function HistoryScreen() {
     range === "30d"
       ? series30
       : range === "12w"
-      ? series12w
-      : range === "1y"
-      ? series1y
-      : seriesAll;
+        ? series12w
+        : range === "1y"
+          ? series1y
+          : seriesAll;
 
   const [mode, setMode] = useState("chart");
   const chartW = Dimensions.get("window").width - 32;
@@ -250,7 +250,7 @@ export default function HistoryScreen() {
     chartData.length > 1
       ? Math.max(
           MIN_POINT_SPACING,
-          (chartW - LEFT_RIGHT_GUTTER * 1) / (chartData.length - 1)
+          (chartW - LEFT_RIGHT_GUTTER * 1) / (chartData.length - 1),
         )
       : MIN_POINT_SPACING;
 
@@ -413,16 +413,32 @@ export default function HistoryScreen() {
                     const ymd = date.dateString;
                     const done = doneSet.has(ymd);
                     return (
-                      <View style={[styles.dayCell, done && styles.dayDone]}>
-                        <Text
-                          style={[
-                            styles.dayText,
-                            state === "disabled" && styles.dayTextDisabled,
-                          ]}
-                        >
-                          {date.day}
-                        </Text>
-                      </View>
+                      <Pressable
+                        onPress={() => {
+                          router.push({
+                            pathname: "/exercises/[workoutId]",
+                            params: {
+                              workoutId,
+                              name: workoutName || "",
+                              selectedDate: ymd,
+                            },
+                          });
+                        }}
+                        style={({ pressed }) => [
+                          { opacity: pressed ? 0.5 : 1 },
+                        ]}
+                      >
+                        <View style={[styles.dayCell, done && styles.dayDone]}>
+                          <Text
+                            style={[
+                              styles.dayText,
+                              state === "disabled" && styles.dayTextDisabled,
+                            ]}
+                          >
+                            {date.day}
+                          </Text>
+                        </View>
+                      </Pressable>
                     );
                   }}
                   theme={{
@@ -450,7 +466,7 @@ export default function HistoryScreen() {
                 rows.push(
                   <Text key={`year-${year}`} style={styles.yearHeader}>
                     {year}
-                  </Text>
+                  </Text>,
                 );
                 lastYear = year;
               }
@@ -482,7 +498,7 @@ export default function HistoryScreen() {
                   {!!entry.notes && (
                     <Text style={styles.rowNotes}>{entry.notes}</Text>
                   )}
-                </Pressable>
+                </Pressable>,
               );
             }
 

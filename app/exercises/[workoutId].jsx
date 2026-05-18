@@ -10,6 +10,7 @@ import { EXERCISE_TYPES } from "../../components/general/exerciseTypes";
 import {
   formatNum,
   convertWeight,
+  convertUnit,
   summarizeSession,
   formatPrettyDate,
 } from "../../components/general/metrics";
@@ -446,7 +447,7 @@ export default function WorkoutScreen() {
         onChangeUnits={setExerciseUnits}
         onReadPrevSession={readPrevSession}
         onOpenHistory={openHistory}
-        utils={{ formatNum, convertWeight, summarizeSession, formatPrettyDate }}
+        utils={{ formatNum, convertWeight, convertUnit, summarizeSession, formatPrettyDate }}
       />
 
       {isReordering && (

@@ -11,6 +11,16 @@ import React, { useState, useRef, useEffect } from "react";
 import { EXERCISE_TYPES } from "../general/exerciseTypes";
 import { newId } from "../../storage/id";
 
+const UNIT_LABELS = {
+  kg: "kilograms",
+  lbs: "lbs",
+  m: "meters",
+  km: "kilometers",
+  mi: "miles",
+  s: "seconds",
+  min: "minutes",
+};
+
 //this is getting so messy i am cooked lmaooooooo sorry
 
 const ExerciseCard = ({
@@ -67,7 +77,8 @@ const ExerciseCard = ({
   const cUnit = unit?.countUnit ?? fallbackC ?? "";
   const units = { qUnit, cUnit };
 
-  const isKgOrLbs = qUnit === "kg" || qUnit === "lbs";
+  const canSwitchQUnit = uopts.quantity.length > 1;
+  const canSwitchCUnit = uopts.count.length > 1;
 
   const displayQUnit = unit?.quantityUnit || "";
   const notesSuggestion = utils.summarizeSession(sets, units);
@@ -107,7 +118,7 @@ const ExerciseCard = ({
           },
         ],
         "plain-text",
-        name
+        name,
       );
     } else {
       setRenameDraft(name);
@@ -307,15 +318,22 @@ const ExerciseCard = ({
             const storedUnitQ = s.quantityUnitUsed ?? qUnit;
             let displayQ = storedQ;
             if (cfg.showQ && qUnit && storedQ != null) {
-              displayQ = utils.convertWeight(storedQ, storedUnitQ, qUnit);
+              displayQ = utils.convertUnit(storedQ, storedUnitQ, qUnit);
+            }
+
+            const storedC = s.count;
+            const storedUnitC = s.countUnitUsed ?? cUnit;
+            let displayC = storedC;
+            if (cfg.showC && cUnit && storedC != null) {
+              displayC = utils.convertUnit(storedC, storedUnitC, cUnit);
             }
 
             const draft = rowDrafts[s.id] ?? {};
             const quantityValue = cfg.showQ
-              ? draft.quantityDraft ?? String(utils.formatNum(displayQ))
+              ? (draft.quantityDraft ?? String(utils.formatNum(displayQ)))
               : "";
             const countValue = cfg.showC
-              ? draft.countDraft ?? String(s.count ?? "")
+              ? (draft.countDraft ?? String(utils.formatNum(displayC)))
               : "";
 
             return (
@@ -334,7 +352,7 @@ const ExerciseCard = ({
                         style: "destructive",
                         onPress: () => deleteSet(s.id),
                       },
-                    ]
+                    ],
                   );
                 }}
                 style={({ pressed }) => [
@@ -364,14 +382,14 @@ const ExerciseCard = ({
                     />
                     {qUnit ? (
                       <Pressable
-                        disabled={!isKgOrLbs}
+                        disabled={!canSwitchQUnit}
                         hitSlop={8}
                         onLongPress={() => {
                           const opts = uopts.quantity;
                           if (!opts.length) return;
-                          Alert.alert("Weight unit", "Choose unit", [
+                          Alert.alert("Unit", "Choose unit", [
                             ...opts.map((u) => ({
-                              text: u,
+                              text: UNIT_LABELS[u] ?? u,
                               onPress: () =>
                                 onChangeUnits?.(id, { quantityUnit: u }),
                             })),
@@ -410,14 +428,14 @@ const ExerciseCard = ({
                     />
                     {cUnit ? (
                       <Pressable
-                        disabled={!isKgOrLbs}
+                        disabled={!canSwitchCUnit}
                         hitSlop={8}
                         onLongPress={() => {
                           const opts = uopts.count;
                           if (!opts.length) return;
-                          Alert.alert("Time unit", "Choose unit", [
+                          Alert.alert("Unit", "Choose unit", [
                             ...opts.map((u) => ({
-                              text: u,
+                              text: UNIT_LABELS[u] ?? u,
                               onPress: () =>
                                 onChangeUnits?.(id, { countUnit: u }),
                             })),
@@ -471,14 +489,14 @@ const ExerciseCard = ({
                   />
                   {qUnit ? (
                     <Pressable
-                      disabled={!isKgOrLbs}
+                      disabled={!canSwitchQUnit}
                       hitSlop={8}
                       onLongPress={() => {
                         const opts = uopts.quantity;
                         if (!opts.length) return;
-                        Alert.alert("Weight unit", "Choose unit", [
+                        Alert.alert("Unit", "Choose unit", [
                           ...opts.map((u) => ({
-                            text: u,
+                            text: UNIT_LABELS[u] ?? u,
                             onPress: () =>
                               onChangeUnits?.(id, { quantityUnit: u }),
                           })),
@@ -514,14 +532,14 @@ const ExerciseCard = ({
                   />
                   {cUnit ? (
                     <Pressable
-                      disabled={!isKgOrLbs}
+                      disabled={!canSwitchCUnit}
                       hitSlop={8}
                       onLongPress={() => {
                         const opts = uopts.count;
                         if (!opts.length) return;
-                        Alert.alert("Time unit", "Choose unit", [
+                        Alert.alert("Unit", "Choose unit", [
                           ...opts.map((u) => ({
-                            text: u,
+                            text: UNIT_LABELS[u] ?? u,
                             onPress: () =>
                               onChangeUnits?.(id, { countUnit: u }),
                           })),
