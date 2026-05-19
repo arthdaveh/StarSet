@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.StarSet"
+      "bundleIdentifier": "com.arth.StarSet"
     },
     "android": {
       "adaptiveIcon": {
