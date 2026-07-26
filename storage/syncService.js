@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabase";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { storage } from "./sqliteAdapter";
 
 const nowMs = () => Date.now();
@@ -9,6 +9,8 @@ export async function syncData() {
   if (syncPromise) return syncPromise;
 
   syncPromise = (async () => {
+    if (!isSupabaseConfigured) return { ok: false, skipped: true };
+
     await storage.init();
 
     const {
