@@ -73,6 +73,7 @@ export default function WeekSwiper({ selectedDate, onChange, pageWidth }) {
     pendingRecenterRef.current = true;
 
     setAnchorMondayYMD((prev) => addDays(prev, dir * 7));
+    onChange?.(addDays(selectedDate, dir * 7));
   };
 
   useLayoutEffect(() => {

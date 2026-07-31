@@ -525,18 +525,6 @@ const settings = () => {
                 </View>
               </Modal>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.btnWarn,
-                  pressed && styles.btnPressed,
-                ]}
-                onPress={onDeleteExerciseEverywhere}
-              >
-                <Text style={styles.btnText}>Delete exercise everywhere</Text>
-              </Pressable>
-
-              <View style={{ height: 8 }} />
-
               <Text style={styles.label}>Delete range (YYYY-MM-DD)</Text>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <TextInput
@@ -565,6 +553,18 @@ const settings = () => {
                 onPress={onDeleteExerciseRange}
               >
                 <Text style={styles.btnText}>Delete history in range</Text>
+              </Pressable>
+
+              <View style={{ height: 8 }} />
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.btnWarn,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={onDeleteExerciseEverywhere}
+              >
+                <Text style={styles.btnText}>Delete exercise everywhere</Text>
               </Pressable>
             </View>
           </View>

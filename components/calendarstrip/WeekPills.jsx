@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 export default function WeekPills({ selectedDate, onChange, anchorDateYMD }) {
   const todayStr = formatLocalYYYYMMDD(new Date());
   const isTodaySelected = selectedDate === todayStr;
+  const isPastSelected = selectedDate < todayStr;
+  const isFutureSelected = selectedDate > todayStr;
 
   function formatLocalYYYYMMDD(d) {
     const y = d.getFullYear();
@@ -69,14 +71,12 @@ export default function WeekPills({ selectedDate, onChange, anchorDateYMD }) {
           onChange?.(todayStr);
         }}
       >
-        <Text style={styles.date}>{headerText}</Text>
+        <Text style={[styles.date, !isTodaySelected && styles.dateNotToday]}>
+          {headerText}
+        </Text>
       </Pressable>
 
       <View style={styles.weekRowWrapper}>
-        {!isTodaySelected && (
-          <View pointerEvents="none" style={styles.weekRowOutlineOverlay} />
-        )}
-
         <View style={styles.weekRow}>
           {weekDays.map((d) => (
             <View key={d.key} style={styles.pillSlot}>
@@ -85,6 +85,8 @@ export default function WeekPills({ selectedDate, onChange, anchorDateYMD }) {
                   styles.pill,
                   d.isToday && styles.pillToday,
                   d.isSelected && styles.pillSelected,
+                  d.isSelected && isPastSelected && styles.pillSelectedPast,
+                  d.isSelected && isFutureSelected && styles.pillSelectedFuture,
                 ]}
                 onPress={() => {
                   const todayStr = formatLocalYYYYMMDD(new Date());
@@ -112,6 +114,7 @@ const ROW_W = 7 * PILL_W + 6 * PILL_GAP;
 const styles = StyleSheet.create({
   header: { gap: 6, marginBottom: 16, alignItems: "center", marginTop: 12 },
   date: { color: "white", fontSize: 20, fontWeight: "600" },
+  dateNotToday: { color: "#777" },
 
   weekRow: {
     flexDirection: "row",
@@ -127,13 +130,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 6,
     borderRadius: 28,
-  },
-
-  weekRowOutlineOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "#666",
   },
 
   pillSlot: {
@@ -154,6 +150,8 @@ const styles = StyleSheet.create({
 
   pillToday: { borderColor: "#e0e1e1", borderWidth: 3 },
   pillSelected: { borderColor: "#959696", borderWidth: 4 },
+  pillSelectedPast: { borderColor: "#7a3030" },
+  pillSelectedFuture: { borderColor: "#30527a" },
 
   // text
   pillDay: { color: "white", fontSize: 12, marginBottom: 2, lineHeight: 14 },

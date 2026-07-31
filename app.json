@@ -14,8 +14,12 @@
       "backgroundColor": "#151718"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.arth.StarSet"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.arth.StarSet",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +35,12 @@
     "plugins": [
       "expo-router",
       "expo-sqlite"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6c44a401-bd8c-4971-88c7-74d005e8c4cb"
+      }
+    }
   }
 }
